@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://dfplayer001"]
 
 [ext_resource type="Script" path="res://scripts/player/PlayerController.gd" id="1_player"]
+[ext_resource type="PackedScene" path="res://assets/models/field_specialists/cleaner.gltf" id="2_cleaner"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_p"]
 radius = 0.35
@@ -30,6 +31,9 @@ script = ExtResource("1_player")
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.875, 0)
 shape = SubResource("CapsuleShape3D_p")
+
+[node name="CleanerModel" parent="." instance=ExtResource("2_cleaner")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
 
 [node name="Head" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.55, 0)

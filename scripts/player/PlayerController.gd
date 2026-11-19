@@ -23,7 +23,9 @@ enum ToolMode { HANDS, BRUSH }
 @onready var interaction_ray: RayCast3D = $Head/Camera3D/InteractionRay
 @onready var hold_socket: Node3D = $Head/Camera3D/HoldSocket
 @onready var tool_model: Node3D = $Head/Camera3D/ToolAnchor
+@onready var cleaner_model: Node3D = get_node_or_null("CleanerModel")
 
+var anim_player: AnimationPlayer = null
 var current_tool: ToolMode = ToolMode.HANDS
 var held_trash: CarryableTrash = null
 var current_prompt: String = ""
@@ -36,6 +38,11 @@ const BOB_AMP: float = 0.04
 func _ready() -> void:
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 	_update_tool_display()
+	
+	if cleaner_model:
+		anim_player = cleaner_model.get_node_or_null("AnimationPlayer")
+		if anim_player and anim_player.has_animation("Unarmed_Idle-loop"):
+			anim_player.play("Unarmed_Idle-loop")
 
 func _unhandled_input(event: InputEvent) -> void:
 	# Захват мыши / выход по Esc
@@ -66,6 +73,30 @@ func _physics_process(delta: float) -> void:
 	_handle_movement(delta)
 	_handle_interaction(delta)
 	_apply_head_bob(delta)
+	_update_character_animation()
+
+func _update_character_animation() -> void:
+	if not anim_player:
+		return
+	var flat_speed = Vector2(velocity.x, velocity.z).length()
+	var prefix = "Unarmed_"
+	
+	if not is_on_floor():
+		var jump_anim = prefix + "Jump"
+		if anim_player.has_animation(jump_anim) and anim_player.current_animation != jump_anim:
+			anim_player.play(jump_anim)
+	elif flat_speed > 5.0:
+		var run_anim = prefix + "Run-loop"
+		if anim_player.has_animation(run_anim) and anim_player.current_animation != run_anim:
+			anim_player.play(run_anim)
+	elif flat_speed > 0.2:
+		var walk_anim = prefix + "Walk-loop"
+		if anim_player.has_animation(walk_anim) and anim_player.current_animation != walk_anim:
+			anim_player.play(walk_anim)
+	else:
+		var idle_anim = prefix + "Idle-loop"
+		if anim_player.has_animation(idle_anim) and anim_player.current_animation != idle_anim:
+			anim_player.play(idle_anim)
 
 func _handle_movement(delta: float) -> void:
 	# Гравитация

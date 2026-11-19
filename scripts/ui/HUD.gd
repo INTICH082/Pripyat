@@ -17,7 +17,7 @@ func _ready() -> void:
 	EventBus.tool_changed.connect(_on_tool_changed)
 	
 	# Инициализация начальных значений
-	rubles_label.text = "%d руб." % GameState.rubles
+	rubles_label.text = "%d крб." % GameState.karbovantsi
 	cleanliness_bar.value = 0.0
 	cleanliness_label.text = "Чистота двора: 0.0%"
 
@@ -30,7 +30,7 @@ func _process(_delta: float) -> void:
 		prompt_label.text = player.current_prompt
 
 func _on_currency_changed(new_amount: int, delta: int) -> void:
-	rubles_label.text = "%d руб." % new_amount
+	rubles_label.text = "%d крб." % new_amount
 	if delta > 0:
 		_flash_rubles()
 

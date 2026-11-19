@@ -35,7 +35,7 @@ text = "Бюджет восстановления: "
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.85, 0.3, 1)
 theme_override_font_sizes/font_size = 20
-text = "0 руб."
+text = "0 крб."
 
 [node name="CleanlinessBar" type="ProgressBar" parent="TopLeft/VBox"]
 custom_minimum_size = Vector2(300, 24)

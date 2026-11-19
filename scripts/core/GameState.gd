@@ -1,13 +1,18 @@
 extends Node
 
 ## Состояние игры (GameState)
-## Управляет кошельком (Советские рубли) и общим прогрессом чистоты локации.
+## Управляет кошельком (Карбованцы) и общим прогрессом чистоты локации.
 
-var rubles: int = 0:
+var karbovantsi: int = 0:
 	set(value):
-		var delta = value - rubles
-		rubles = max(0, value)
-		EventBus.currency_changed.emit(rubles, delta)
+		var delta = value - karbovantsi
+		karbovantsi = max(0, value)
+		EventBus.currency_changed.emit(karbovantsi, delta)
+
+# Обратная совместимость для существующих вызовов
+var rubles: int:
+	get: return karbovantsi
+	set(value): karbovantsi = value
 
 var total_items: int = 0
 var cleaned_items: int = 0
@@ -20,8 +25,11 @@ func register_cleanup_item() -> void:
 	total_items += 1
 	_emit_progress()
 
+func add_karbovantsi(amount: int) -> void:
+	karbovantsi += amount
+
 func add_rubles(amount: int) -> void:
-	rubles += amount
+	add_karbovantsi(amount)
 
 func _on_trash_deposited(_trash_name: String, reward_rubles: int) -> void:
 	add_rubles(reward_rubles)
