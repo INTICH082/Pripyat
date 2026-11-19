@@ -1,0 +1,52 @@
+[gd_scene format=3 uid="uid://cbin001"]
+
+[ext_resource type="Script" path="res://scripts/interactables/TrashBin.gd" id="1_bin"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_solid"]
+size = Vector3(1.6, 1.1, 1.0)
+
+[sub_resource type="BoxMesh" id="BoxMesh_body"]
+size = Vector3(1.6, 1.0, 1.0)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_metal"]
+albedo_color = Color(0.18, 0.28, 0.2, 1)
+metallic = 0.4
+roughness = 0.7
+
+[sub_resource type="BoxMesh" id="BoxMesh_rim"]
+size = Vector3(1.66, 0.1, 1.06)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_rim"]
+albedo_color = Color(0.12, 0.15, 0.12, 1)
+metallic = 0.6
+roughness = 0.6
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_deposit"]
+size = Vector3(1.7, 0.7, 1.1)
+
+[node name="TrashBin" type="StaticBody3D" groups=["trash_bin"]]
+collision_layer = 1
+collision_mask = 3
+script = ExtResource("1_bin")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.55, 0)
+shape = SubResource("BoxShape3D_solid")
+
+[node name="BodyMesh" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+mesh = SubResource("BoxMesh_body")
+surface_material_override/0 = SubResource("StandardMaterial3D_metal")
+
+[node name="RimMesh" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.05, 0)
+mesh = SubResource("BoxMesh_rim")
+surface_material_override/0 = SubResource("StandardMaterial3D_rim")
+
+[node name="DepositArea" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+collision_layer = 0
+collision_mask = 1
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="DepositArea"]
+shape = SubResource("BoxShape3D_deposit")
