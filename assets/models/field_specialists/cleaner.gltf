@@ -446,14 +446,14 @@
 			"name":"\u041e\u0447\u0438\u0441\u0442\u0438\u0442\u0435\u043b\u044c \u2022 \u0442\u043a\u0430\u043d\u044c \u043a\u0430\u043f\u044e\u0448\u043e\u043d\u0430",
 			"normalTexture":{
 				"index":2,
-				"scale":0.46000000834465027
+				"scale":0.36000001430511475
 			},
 			"pbrMetallicRoughness":{
 				"baseColorTexture":{
 					"index":3
 				},
 				"metallicFactor":0,
-				"roughnessFactor":0.8899999856948853
+				"roughnessFactor":0.8999999761581421
 			}
 		},
 		{
@@ -508,7 +508,7 @@
 					"index":8
 				},
 				"metallicFactor":0,
-				"roughnessFactor":0.36000001430511475
+				"roughnessFactor":0.5299999713897705
 			}
 		}
 	],
@@ -601,11 +601,11 @@
 			"source":1
 		},
 		{
-			"sampler":1,
+			"sampler":0,
 			"source":2
 		},
 		{
-			"sampler":1,
+			"sampler":0,
 			"source":3
 		},
 		{
@@ -625,7 +625,7 @@
 			"source":5
 		},
 		{
-			"sampler":1,
+			"sampler":0,
 			"source":6
 		}
 	],
@@ -1277,10 +1277,6 @@
 		{
 			"magFilter":9728,
 			"minFilter":9984
-		},
-		{
-			"magFilter":9729,
-			"minFilter":9987
 		}
 	],
 	"buffers":[
