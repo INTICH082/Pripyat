@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/WeaponData.gd" id="1_wdata"]
+
+[resource]
+script = ExtResource("1_wdata")
+id = "13_launcher_gm"
+display_name = "Гранатомет ГМ (РГ-6)"
+category = "Гранатомет"
+damage = 380.0
+fire_rate = 18.0
+mag_capacity = 6
+reload_time = 4.5
+effective_range = 80.0
+price_karbovantsi = 2200
+ammo_type = "vog25"
+is_melee = false
+is_burst = false
+burst_count = 2
+is_flamethrower = false
+is_explosive = true
+splash_radius = 6.0
+model_path = "res://assets/models/weapons/13_launcher_gm.glb"
+description = "Колоссальный урон по площади. Расчищает завалы бетонных блоков и скопления тварей."
+can_break_wood = true
+can_dig = false
+can_open_locks = true
+can_burn_weeds = false

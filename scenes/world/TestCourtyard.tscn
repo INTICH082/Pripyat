@@ -5,6 +5,19 @@
 [ext_resource type="PackedScene" path="res://scenes/interactables/TrashBin.tscn" id="3_bin"]
 [ext_resource type="PackedScene" path="res://scenes/interactables/TrashItem.tscn" id="4_trash"]
 [ext_resource type="PackedScene" path="res://scenes/interactables/DirtPatch.tscn" id="5_dirt"]
+[ext_resource type="Script" path="res://scripts/interactables/TrainingDummy.gd" id="6_dummy"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_dummy"]
+radius = 0.35
+height = 1.7
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_dummy"]
+radius = 0.35
+height = 1.7
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_dummy"]
+albedo_color = Color(0.75, 0.25, 0.2, 1)
+roughness = 0.8
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky"]
 sky_top_color = Color(0.4, 0.48, 0.55, 1)
@@ -100,6 +113,19 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.5, 0.25, -6.5)
 [node name="BenchMesh" type="MeshInstance3D" parent="Bench"]
 mesh = SubResource("BoxMesh_bench")
 surface_material_override/0 = SubResource("StandardMaterial3D_wood_bench")
+
+[node name="TrainingDummy" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.5, 0.85, -6.0)
+collision_layer = 1
+collision_mask = 3
+script = ExtResource("6_dummy")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="TrainingDummy"]
+shape = SubResource("CapsuleShape3D_dummy")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="TrainingDummy"]
+mesh = SubResource("CapsuleMesh_dummy")
+surface_material_override/0 = SubResource("StandardMaterial3D_dummy")
 
 [node name="TrashBin" parent="." instance=ExtResource("3_bin")]
 transform = Transform3D(0.965926, 0, 0.258819, 0, 1, 0, -0.258819, 0, 0.965926, 5.5, 0, -2.0)

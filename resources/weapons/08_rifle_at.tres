@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/WeaponData.gd" id="1_wdata"]
+
+[resource]
+script = ExtResource("1_wdata")
+id = "08_rifle_at"
+display_name = "Автомат АТ (Абакан)"
+category = "Автомат"
+damage = 48.0
+fire_rate = 600.0
+mag_capacity = 30
+reload_time = 2.4
+effective_range = 120.0
+price_karbovantsi = 850
+ammo_type = "5.45x39"
+is_melee = false
+is_burst = true
+burst_count = 2
+is_flamethrower = false
+is_explosive = false
+splash_radius = 0.0
+model_path = "res://assets/models/weapons/08_rifle_at.glb"
+description = "Сверхточная мгновенная отсечка по 2 патрона в одну точку. Высокая кучность на улицах."
+can_break_wood = false
+can_dig = false
+can_open_locks = false
+can_burn_weeds = false

@@ -4,7 +4,7 @@ extends CharacterBody3D
 ## Первоклассный 1st-person контроллер с поддержкой переноса физических объектов
 ## и послойной очистки поверхностей (в духе friendslop / cleaning games).
 
-enum ToolMode { HANDS, BRUSH }
+enum ToolMode { HANDS, BRUSH, WEAPON }
 
 @export_group("Движение")
 @export var walk_speed: float = 4.5
@@ -24,6 +24,7 @@ enum ToolMode { HANDS, BRUSH }
 @onready var hold_socket: Node3D = $Head/Camera3D/HoldSocket
 @onready var tool_model: Node3D = $Head/Camera3D/ToolAnchor
 @onready var cleaner_model: Node3D = get_node_or_null("CleanerModel")
+@onready var weapon_manager: WeaponManager = get_node_or_null("Head/Camera3D/WeaponManager")
 
 var anim_player: AnimationPlayer = null
 var current_tool: ToolMode = ToolMode.HANDS
@@ -58,11 +59,25 @@ func _unhandled_input(event: InputEvent) -> void:
 		head.rotate_x(-event.relative.y * mouse_sensitivity)
 		head.rotation.x = clamp(head.rotation.x, deg_to_rad(-max_pitch), deg_to_rad(max_pitch))
 
-	# Переключение инструментов (1 - Руки, 2 - Щётка, Колесо мыши)
+	# Переключение инструментов (1 - Руки, 2 - Щётка, 3 - Оружие)
 	if event.is_action_pressed("tool_hands"):
 		_set_tool(ToolMode.HANDS)
 	elif event.is_action_pressed("tool_brush"):
 		_set_tool(ToolMode.BRUSH)
+	elif event.is_action_pressed("weapon_mode"):
+		_set_tool(ToolMode.WEAPON)
+	elif current_tool == ToolMode.WEAPON and weapon_manager:
+		if event.is_action_pressed("reload"):
+			weapon_manager.reload()
+		elif event.is_action_pressed("weapon_next"):
+			weapon_manager.next_weapon()
+		elif event.is_action_pressed("weapon_prev"):
+			weapon_manager.prev_weapon()
+		elif event is InputEventMouseButton and event.is_pressed():
+			if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+				weapon_manager.next_weapon()
+			elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+				weapon_manager.prev_weapon()
 	elif event is InputEventMouseButton and event.is_pressed():
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			_cycle_tool(1)
@@ -170,6 +185,22 @@ func _handle_interaction(delta: float) -> void:
 			if collider != null:
 				current_prompt = "Направьте на грязь, мох или пыль"
 
+	# 4. Если в руках оружие (Режим WEAPON)
+	elif current_tool == ToolMode.WEAPON:
+		if weapon_manager and weapon_manager.current_weapon:
+			var w = weapon_manager.current_weapon
+			var mag = weapon_manager.current_mags.get(w.id, 0)
+			var res = weapon_manager.ammo_reserves.get(w.ammo_type, 0)
+			if w.is_melee:
+				current_prompt = "[ЛКМ] Удар: %s  |  [[ / ]] Смена оружия" % w.display_name
+			elif w.is_flamethrower:
+				current_prompt = "[ЛКМ] Струя огня (%d л)  |  [R] Заправка  |  [[ / ]] Смена" % mag
+			else:
+				current_prompt = "[ЛКМ] Огонь [%d / %d]  |  [R] Перезарядка  |  [[ / ]] Смена" % [mag, res]
+				
+			if Input.is_action_pressed("primary_action"):
+				weapon_manager.primary_attack()
+
 func _find_dirt_spot(node: Node) -> DirtSpot:
 	if node is DirtSpot:
 		return node
@@ -202,10 +233,24 @@ func _cycle_tool(direction: int) -> void:
 	_set_tool(next_mode as ToolMode)
 
 func _update_tool_display() -> void:
-	var mode_name = "Руки (перенос мусора)" if current_tool == ToolMode.HANDS else "Щётка / Скребок (очистка поверхностей)"
+	var mode_name = ""
+	match current_tool:
+		ToolMode.HANDS:
+			mode_name = "Руки (перенос мусора)"
+			if tool_model: tool_model.visible = false
+			if weapon_manager and weapon_manager.weapon_mount: weapon_manager.weapon_mount.visible = false
+		ToolMode.BRUSH:
+			mode_name = "Щётка / Скребок (очистка поверхностей)"
+			if tool_model: tool_model.visible = true
+			if weapon_manager and weapon_manager.weapon_mount: weapon_manager.weapon_mount.visible = false
+		ToolMode.WEAPON:
+			var w_name = weapon_manager.current_weapon.display_name if (weapon_manager and weapon_manager.current_weapon) else "Оружие"
+			mode_name = "Оружие: %s" % w_name
+			if tool_model: tool_model.visible = false
+			if weapon_manager and weapon_manager.weapon_mount: weapon_manager.weapon_mount.visible = true
+			if weapon_manager: weapon_manager._notify_hud()
+			
 	EventBus.tool_changed.emit(current_tool, mode_name)
-	if tool_model:
-		tool_model.visible = (current_tool == ToolMode.BRUSH)
 
 func _animate_tool_action() -> void:
 	# Легкая анимация покачивания инструмента при чистке

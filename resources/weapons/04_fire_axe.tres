@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/WeaponData.gd" id="1_wdata"]
+
+[resource]
+script = ExtResource("1_wdata")
+id = "04_fire_axe"
+display_name = "Топор пожарный"
+category = "Ближний бой"
+damage = 58.0
+fire_rate = 50.0
+mag_capacity = 0
+reload_time = 0.0
+effective_range = 1.7
+price_karbovantsi = 85
+ammo_type = "none"
+is_melee = true
+is_burst = false
+burst_count = 2
+is_flamethrower = false
+is_explosive = false
+splash_radius = 0.0
+model_path = "res://assets/models/weapons/04_fire_axe.glb"
+description = "Высокий шанс отсечения конечностей и оглушения. Расчищает упавшие балки и деревянный лом."
+can_break_wood = true
+can_dig = false
+can_open_locks = false
+can_burn_weeds = false

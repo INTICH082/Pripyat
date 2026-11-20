@@ -15,6 +15,8 @@ func _ready() -> void:
 	EventBus.currency_changed.connect(_on_currency_changed)
 	EventBus.cleanliness_updated.connect(_on_cleanliness_updated)
 	EventBus.tool_changed.connect(_on_tool_changed)
+	EventBus.weapon_switched.connect(_on_weapon_switched)
+	EventBus.weapon_ammo_changed.connect(_on_weapon_ammo_changed)
 	
 	# Инициализация начальных значений
 	rubles_label.text = "%d крб." % GameState.karbovantsi
@@ -40,6 +42,19 @@ func _on_cleanliness_updated(_cleaned: int, _total: int, percent: float) -> void
 
 func _on_tool_changed(_mode: int, tool_name: String) -> void:
 	tool_label.text = "Инструмент: [ %s ]" % tool_name
+
+func _on_weapon_switched(weapon: WeaponData, cur_ammo: int, res_ammo: int) -> void:
+	if weapon.is_melee:
+		tool_label.text = "Оружие: [ %s (Ближний бой) ]" % weapon.display_name
+	elif weapon.is_flamethrower:
+		tool_label.text = "Оружие: [ %s ]  |  Топливо: %d л / %d" % [weapon.display_name, cur_ammo, res_ammo]
+	else:
+		tool_label.text = "Оружие: [ %s ]  |  Патроны: %d / %d" % [weapon.display_name, cur_ammo, res_ammo]
+
+func _on_weapon_ammo_changed(cur_ammo: int, res_ammo: int) -> void:
+	if player and player.weapon_manager and player.weapon_manager.current_weapon:
+		var w = player.weapon_manager.current_weapon
+		_on_weapon_switched(w, cur_ammo, res_ammo)
 
 func _flash_rubles() -> void:
 	var tween = create_tween()

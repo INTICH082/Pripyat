@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/WeaponData.gd" id="1_wdata"]
+
+[resource]
+script = ExtResource("1_wdata")
+id = "10_rifle_vt"
+display_name = "Винтовка ВТ (Тяжелая)"
+category = "Винтовка"
+damage = 145.0
+fire_rate = 22.0
+mag_capacity = 1
+reload_time = 2.2
+effective_range = 250.0
+price_karbovantsi = 720
+ammo_type = "7.62x54R"
+is_melee = false
+is_burst = false
+burst_count = 2
+is_flamethrower = false
+is_explosive = false
+splash_radius = 0.0
+model_path = "res://assets/models/weapons/10_rifle_vt.glb"
+description = "Огромная останавливающая сила. С одного попадания останавливает несущегося оленя или волка."
+can_break_wood = false
+can_dig = false
+can_open_locks = false
+can_burn_weeds = false

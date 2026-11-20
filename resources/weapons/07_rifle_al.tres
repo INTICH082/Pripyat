@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/WeaponData.gd" id="1_wdata"]
+
+[resource]
+script = ExtResource("1_wdata")
+id = "07_rifle_al"
+display_name = "Автомат АЛ (АКСУ)"
+category = "Автомат"
+damage = 36.0
+fire_rate = 650.0
+mag_capacity = 30
+reload_time = 2.1
+effective_range = 60.0
+price_karbovantsi = 450
+ammo_type = "5.45x39"
+is_melee = false
+is_burst = false
+burst_count = 2
+is_flamethrower = false
+is_explosive = false
+splash_radius = 0.0
+model_path = "res://assets/models/weapons/07_rifle_al.glb"
+description = "Компактный. Высокий разброс при длинной очереди. Удобен в тесных квартирах и подвалах."
+can_break_wood = false
+can_dig = false
+can_open_locks = false
+can_burn_weeds = false

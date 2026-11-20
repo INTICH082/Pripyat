@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/WeaponData.gd" id="1_wdata"]
+
+[resource]
+script = ExtResource("1_wdata")
+id = "06_pistol_pt"
+display_name = "Пистолет ПТ (ТТ)"
+category = "Пистолет"
+damage = 44.0
+fire_rate = 280.0
+mag_capacity = 8
+reload_time = 1.6
+effective_range = 45.0
+price_karbovantsi = 190
+ammo_type = "7.62x25"
+is_melee = false
+is_burst = false
+burst_count = 2
+is_flamethrower = false
+is_explosive = false
+splash_radius = 0.0
+model_path = "res://assets/models/weapons/06_pistol_pt.glb"
+description = "Высокая пробиваемость. Пробивает деревянные заборы и шкуру кабанов без штрафа к урону."
+can_break_wood = false
+can_dig = false
+can_open_locks = false
+can_burn_weeds = false

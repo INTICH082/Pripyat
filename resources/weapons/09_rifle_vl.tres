@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/WeaponData.gd" id="1_wdata"]
+
+[resource]
+script = ExtResource("1_wdata")
+id = "09_rifle_vl"
+display_name = "Винтовка ВЛ (ТОЗ-8)"
+category = "Винтовка"
+damage = 55.0
+fire_rate = 35.0
+mag_capacity = 1
+reload_time = 1.2
+effective_range = 90.0
+price_karbovantsi = 160
+ammo_type = ".22LR"
+is_melee = false
+is_burst = false
+burst_count = 2
+is_flamethrower = false
+is_explosive = false
+splash_radius = 0.0
+model_path = "res://assets/models/weapons/09_rifle_vl.glb"
+description = "Дешевый отстрел крыс, ворон и слепых псов на дальних подступах к локации."
+can_break_wood = false
+can_dig = false
+can_open_locks = false
+can_burn_weeds = false

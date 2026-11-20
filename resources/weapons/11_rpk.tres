@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/WeaponData.gd" id="1_wdata"]
+
+[resource]
+script = ExtResource("1_wdata")
+id = "11_rpk"
+display_name = "Пулемет РПК"
+category = "Пулемет"
+damage = 54.0
+fire_rate = 600.0
+mag_capacity = 40
+reload_time = 3.6
+effective_range = 100.0
+price_karbovantsi = 1250
+ammo_type = "7.62x39"
+is_melee = false
+is_burst = false
+burst_count = 2
+is_flamethrower = false
+is_explosive = false
+splash_radius = 0.0
+model_path = "res://assets/models/weapons/11_rpk.glb"
+description = "Подавление огнем. Возможность установки сошек на бордюры и капоты транспорта."
+can_break_wood = false
+can_dig = false
+can_open_locks = false
+can_burn_weeds = false

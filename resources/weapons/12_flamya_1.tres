@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/WeaponData.gd" id="1_wdata"]
+
+[resource]
+script = ExtResource("1_wdata")
+id = "12_flamya_1"
+display_name = "Огнемёт «Пламя-1»"
+category = "Огнемёт"
+damage = 85.0
+fire_rate = 600.0
+mag_capacity = 100
+reload_time = 4.0
+effective_range = 12.0
+price_karbovantsi = 1850
+ammo_type = "fuel"
+is_melee = false
+is_burst = false
+burst_count = 2
+is_flamethrower = true
+is_explosive = false
+splash_radius = 0.0
+model_path = "res://assets/models/weapons/12_flamya_1.glb"
+description = "Двойное назначение: боевое оружие и инструмент! Мгновенно выжигает биозаросли и стаи мобов."
+can_break_wood = false
+can_dig = false
+can_open_locks = false
+can_burn_weeds = true

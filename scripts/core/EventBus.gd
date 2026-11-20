@@ -15,8 +15,13 @@ signal dirt_cleaned(reward_rubles: int, world_pos: Vector3)
 signal currency_changed(new_amount: int, delta: int)
 signal cleanliness_updated(cleaned_count: int, total_count: int, percent: float)
 
-# Инструменты
+# Инструменты и Оружие
 signal tool_changed(tool_mode: int, tool_name: String)
+signal weapon_switched(weapon: WeaponData, current_ammo: int, reserve_ammo: int)
+signal weapon_fired(weapon: WeaponData, current_ammo: int)
+signal weapon_reloaded(weapon: WeaponData, current_ammo: int)
+signal weapon_ammo_changed(current_ammo: int, reserve_ammo: int)
+signal enemy_hit(target: Node, damage: float, hit_position: Vector3)
 
 func _enter_tree() -> void:
 	_setup_default_inputs()
@@ -33,6 +38,10 @@ func _setup_default_inputs() -> void:
 	_ensure_mouse_action("primary_action", MOUSE_BUTTON_LEFT)
 	_ensure_key_action("tool_hands", KEY_1)
 	_ensure_key_action("tool_brush", KEY_2)
+	_ensure_key_action("weapon_mode", KEY_3)
+	_ensure_key_action("reload", KEY_R)
+	_ensure_key_action("weapon_next", KEY_BRACKETRIGHT)
+	_ensure_key_action("weapon_prev", KEY_BRACKETLEFT)
 
 func _ensure_key_action(action_name: String, key_code: Key) -> void:
 	if not InputMap.has_action(action_name):
