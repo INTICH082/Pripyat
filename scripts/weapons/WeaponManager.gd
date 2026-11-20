@@ -129,7 +129,7 @@ func _equip_weapon(index: int) -> void:
 	
 	_update_weapon_mesh_visibility()
 	_update_fps_skeleton_bones()
-	_play_fps_anim(current_weapon.id + "_Idle-loop", 0.0)
+	_play_fps_anim(current_weapon.id + "_Idle-loop", 0.0, true)
 	_notify_hud()
 
 func equip_fists() -> void:
@@ -200,24 +200,33 @@ func _resolve_fps_anim_name(suffix: String) -> String:
 			return a
 	return ""
 
-func _play_fps_anim(anim_name: String, blend_time: float = 0.15) -> void:
+func _play_fps_anim(anim_name: String, blend_time: float = 0.15, restart: bool = false) -> void:
 	if not fps_anim_player:
 		return
 	var full_name = _resolve_fps_anim_name(anim_name)
 	if full_name != "":
-		if fps_anim_player.current_animation != full_name:
+		if restart:
+			fps_anim_player.stop()
+			fps_anim_player.play(full_name, 0.0)
+		elif fps_anim_player.current_animation != full_name:
 			fps_anim_player.play(full_name, blend_time)
 
-func update_movement_animation(flat_speed: float, is_sprinting: bool) -> void:
+func update_movement_animation(flat_speed: float, is_sprinting: bool, is_crouching: bool = false, is_in_air: bool = false) -> void:
 	if is_attacking or is_reloading or not current_weapon or not fps_anim_player:
 		return
 		
 	var wid = current_weapon.id
-	if flat_speed > 5.0 and is_sprinting:
+	if is_in_air:
+		fps_anim_player.speed_scale = 1.0
+		_play_fps_anim(wid + "_Idle-loop", 0.3)
+	elif is_sprinting and flat_speed > 4.0:
+		fps_anim_player.speed_scale = 1.0
 		_play_fps_anim(wid + "_Run-loop", 0.2)
 	elif flat_speed > 0.2:
+		fps_anim_player.speed_scale = 0.6 if is_crouching else 1.0
 		_play_fps_anim(wid + "_Walk-loop", 0.2)
 	else:
+		fps_anim_player.speed_scale = 1.0
 		_play_fps_anim(wid + "_Idle-loop", 0.2)
 
 func _return_to_movement_anim() -> void:
@@ -285,7 +294,9 @@ func _perform_melee_attack() -> void:
 		strike_anim = FIST_ANIMS[fist_strike_index % FIST_ANIMS.size()]
 		fist_strike_index += 1
 		
-	_play_fps_anim(strike_anim, 0.05)
+	if fps_anim_player:
+		fps_anim_player.speed_scale = 1.0
+	_play_fps_anim(strike_anim, 0.0, true)
 	
 	# Raycast удара
 	var result = _raycast_attack(current_weapon.effective_range)
@@ -307,19 +318,21 @@ func _perform_firearm_attack() -> void:
 	is_attacking = true
 	var wid = current_weapon.id
 	var delay = 60.0 / max(1.0, current_weapon.fire_rate)
+	if fps_anim_player:
+		fps_anim_player.speed_scale = 1.0
 	
 	if current_weapon.is_burst:
 		# Режим Абакана (отсечка по 2 патрона с темпом 1800 выстр/мин)
 		for b in range(current_weapon.burst_count):
 			if current_mags[wid] > 0:
 				current_mags[wid] -= 1
-				_play_fps_anim(wid + "_Fire", 0.02)
+				_play_fps_anim(wid + "_Fire", 0.0, true)
 				_fire_single_shot()
 				_notify_hud()
 			await get_tree().create_timer(0.033).timeout
 	else:
 		current_mags[wid] -= 1
-		_play_fps_anim(wid + "_Fire", 0.04)
+		_play_fps_anim(wid + "_Fire", 0.0, true)
 		_fire_single_shot()
 		_notify_hud()
 		
@@ -345,11 +358,13 @@ func _perform_flame_attack() -> void:
 	can_fire = false
 	is_attacking = true
 	var wid = current_weapon.id
+	if fps_anim_player:
+		fps_anim_player.speed_scale = 1.0
 	
 	current_mags[wid] -= 1
 	_notify_hud()
 	
-	_play_fps_anim(wid + "_Fire", 0.05)
+	_play_fps_anim(wid + "_Fire", 0.05, false)
 	_apply_camera_recoil(0.2)
 	
 	# Огненная струя
@@ -372,11 +387,13 @@ func _perform_explosive_attack() -> void:
 	can_fire = false
 	is_attacking = true
 	var wid = current_weapon.id
+	if fps_anim_player:
+		fps_anim_player.speed_scale = 1.0
 	
 	current_mags[wid] -= 1
 	_notify_hud()
 	
-	_play_fps_anim(wid + "_Fire", 0.05)
+	_play_fps_anim(wid + "_Fire", 0.0, true)
 	_flash_muzzle()
 	_apply_camera_recoil(1.5)
 	
@@ -429,6 +446,16 @@ func _raycast_attack(range_dist: float) -> Dictionary:
 	query.collide_with_areas = true
 	query.collide_with_bodies = true
 	query.collision_mask = 1 | 2
+	
+	# Исключаем тело самого игрока, чтобы можно было без ограничений стрелять вертикально вниз (в пол/под ноги)
+	var player_node = get_tree().get_first_node_in_group("player")
+	if player_node:
+		var rids: Array[RID] = []
+		if player_node is CollisionObject3D:
+			rids.append((player_node as CollisionObject3D).get_rid())
+		for child in player_node.find_children("*", "CollisionObject3D", true, false):
+			rids.append((child as CollisionObject3D).get_rid())
+		query.exclude = rids
 	
 	return space_state.intersect_ray(query)
 

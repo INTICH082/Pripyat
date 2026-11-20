@@ -33,6 +33,8 @@ func _setup_default_inputs() -> void:
 	_ensure_key_action("move_right", KEY_D)
 	_ensure_key_action("jump", KEY_SPACE)
 	_ensure_key_action("sprint", KEY_SHIFT)
+	_ensure_key_action("crouch", KEY_CTRL)
+	_ensure_key_action("crouch_c", KEY_C)
 	_ensure_key_action("interact", KEY_E)
 	_ensure_key_action("drop", KEY_G)
 	_ensure_mouse_action("primary_action", MOUSE_BUTTON_LEFT)

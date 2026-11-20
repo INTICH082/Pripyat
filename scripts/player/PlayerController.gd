@@ -8,16 +8,18 @@ enum ToolMode { HANDS, BRUSH, WEAPON }
 
 @export_group("Движение")
 @export var walk_speed: float = 4.5
-@export var sprint_speed: float = 7.0
-@export var jump_velocity: float = 4.2
+@export var sprint_speed: float = 7.5
+@export var crouch_speed: float = 2.2
+@export var jump_velocity: float = 4.8
 @export var acceleration: float = 12.0
 @export var friction: float = 10.0
 @export var gravity: float = 14.0
 
 @export_group("Камера и Обзор")
 @export var mouse_sensitivity: float = 0.0025
-@export var max_pitch: float = 85.0
+@export var max_pitch: float = 89.5
 
+@onready var collision_shape: CollisionShape3D = $CollisionShape3D
 @onready var head: Node3D = $Head
 @onready var camera: Camera3D = $Head/Camera3D
 @onready var interaction_ray: RayCast3D = $Head/Camera3D/InteractionRay
@@ -27,9 +29,16 @@ enum ToolMode { HANDS, BRUSH, WEAPON }
 @onready var weapon_manager: WeaponManager = get_node_or_null("Head/Camera3D/WeaponManager")
 
 var anim_player: AnimationPlayer = null
-var current_tool: ToolMode = ToolMode.HANDS
+var current_tool: ToolMode = ToolMode.WEAPON
 var held_trash: CarryableTrash = null
 var current_prompt: String = ""
+
+# Параметры приседания
+var is_crouching: bool = false
+const STANDING_HEIGHT: float = 1.75
+const CROUCHING_HEIGHT: float = 1.10
+const STANDING_HEAD_Y: float = 1.665
+const CROUCHING_HEAD_Y: float = 1.05
 
 # Покачивание головы (Head Bob)
 var bob_time: float = 0.0
@@ -121,11 +130,11 @@ func _physics_process(delta: float) -> void:
 	_apply_head_bob(delta)
 	_update_character_animation()
 	
-	# Обновление FPS-анимации рук в зависимости от скорости ходьбы/бега
+	# Обновление FPS-анимации рук в зависимости от скорости, спринта, приседания и воздуха
 	if weapon_manager and (current_tool == ToolMode.WEAPON or (current_tool == ToolMode.HANDS and held_trash == null)):
 		var flat_speed = Vector2(velocity.x, velocity.z).length()
-		var is_sprinting = Input.is_action_pressed("sprint") and flat_speed > 5.0
-		weapon_manager.update_movement_animation(flat_speed, is_sprinting)
+		var is_sprinting = Input.is_action_pressed("sprint") and flat_speed > 4.0 and not is_crouching and is_on_floor()
+		weapon_manager.update_movement_animation(flat_speed, is_sprinting, is_crouching, not is_on_floor())
 
 func _get_body_anim_prefix() -> String:
 	if current_tool == ToolMode.HANDS or current_tool == ToolMode.BRUSH or not weapon_manager or not weapon_manager.current_weapon:
@@ -154,7 +163,7 @@ func _update_character_animation() -> void:
 	
 	if not is_on_floor():
 		action_suffix = "Jump"
-	elif flat_speed > 5.0:
+	elif flat_speed > 5.0 and not is_crouching:
 		action_suffix = "Run-loop"
 	elif flat_speed > 0.2:
 		action_suffix = "Walk-loop"
@@ -168,20 +177,51 @@ func _update_character_animation() -> void:
 	if target_anim != "" and anim_player.current_animation != target_anim:
 		anim_player.play(target_anim, 0.2)
 
+func _can_stand_up() -> bool:
+	var space_state = get_world_3d().direct_space_state
+	var from = global_position + Vector3(0, CROUCHING_HEIGHT * 0.5, 0)
+	var to = global_position + Vector3(0, STANDING_HEIGHT + 0.1, 0)
+	var query = PhysicsRayQueryParameters3D.create(from, to, 1)
+	query.exclude = [self.get_rid()]
+	var result = space_state.intersect_ray(query)
+	return result.is_empty()
+
 func _handle_movement(delta: float) -> void:
 	# Гравитация
 	if not is_on_floor():
 		velocity.y -= gravity * delta
 
-	# Прыжок
-	if Input.is_action_just_pressed("jump") and is_on_floor():
+	# Приседание (Ctrl или C)
+	var wants_crouch = Input.is_action_pressed("crouch") or Input.is_action_pressed("crouch_c")
+	if wants_crouch:
+		is_crouching = true
+	else:
+		if is_crouching and _can_stand_up():
+			is_crouching = false
+
+	# Плавная смена высоты головы и коллизии
+	var target_head_y = CROUCHING_HEAD_Y if is_crouching else STANDING_HEAD_Y
+	head.position.y = move_toward(head.position.y, target_head_y, 7.0 * delta)
+	
+	if collision_shape and collision_shape.shape is CapsuleShape3D:
+		var target_h = CROUCHING_HEIGHT if is_crouching else STANDING_HEIGHT
+		collision_shape.shape.height = move_toward(collision_shape.shape.height, target_h, 7.0 * delta)
+		collision_shape.position.y = collision_shape.shape.height * 0.5
+
+	# Прыжок (нельзя прыгать во время приседания)
+	if Input.is_action_just_pressed("jump") and is_on_floor() and not is_crouching:
 		velocity.y = jump_velocity
 
 	# Направление движения
 	var input_dir = Input.get_vector("move_left", "move_right", "move_forward", "move_backward")
 	var direction = (transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
 	
-	var target_speed = sprint_speed if Input.is_action_pressed("sprint") else walk_speed
+	var is_sprinting = Input.is_action_pressed("sprint") and not is_crouching and is_on_floor() and input_dir.y < 0
+	var target_speed = walk_speed
+	if is_crouching:
+		target_speed = crouch_speed
+	elif is_sprinting:
+		target_speed = sprint_speed
 
 	if direction != Vector3.ZERO:
 		velocity.x = move_toward(velocity.x, direction.x * target_speed, acceleration * delta)

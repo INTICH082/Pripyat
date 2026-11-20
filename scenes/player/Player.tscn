@@ -41,7 +41,7 @@ transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0, 0, 0)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.665, -0.19)
 
 [node name="Camera3D" type="Camera3D" parent="Head"]
-fov = 80.0
+fov = 70.0
 near = 0.05
 
 [node name="InteractionRay" type="RayCast3D" parent="Head/Camera3D"]
@@ -67,6 +67,7 @@ mesh = SubResource("BoxMesh_bristles")
 surface_material_override/0 = SubResource("StandardMaterial3D_bristles")
 
 [node name="FPSViewModel" parent="Head/Camera3D" instance=ExtResource("4_fps_model")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.04, -0.06)
 
 [node name="WeaponManager" type="Node3D" parent="Head/Camera3D" node_paths=PackedStringArray("camera", "fps_viewmodel")]
 script = ExtResource("3_wmanager")
