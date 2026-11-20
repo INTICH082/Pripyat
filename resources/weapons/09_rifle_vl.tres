@@ -10,6 +10,7 @@ category = "Винтовка"
 damage = 55.0
 fire_rate = 35.0
 mag_capacity = 1
+recoil = 2.8
 reload_time = 1.2
 effective_range = 90.0
 price_karbovantsi = 160

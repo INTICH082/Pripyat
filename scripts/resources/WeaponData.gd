@@ -11,6 +11,7 @@ extends Resource
 @export var fire_rate: float = 85.0 ## Темп огня / ударов (в минуту)
 @export var mag_capacity: int = 0 ## Емкость магазина (0 для ближнего боя)
 @export var reload_time: float = 0.0 ## Время перезарядки (в секундах)
+@export var recoil: float = 1.0 ## Сила отдачи камеры (в градусах)
 @export var effective_range: float = 1.2 ## Эффективная дальность (в метрах)
 @export var price_karbovantsi: int = 0
 @export var ammo_type: String = "none" ## "none", "9x18", "7.62x25", "5.45x39", ".22LR", "7.62x54R", "7.62x39", "fuel", "vog25"

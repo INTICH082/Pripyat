@@ -10,6 +10,7 @@ category = "Автомат"
 damage = 36.0
 fire_rate = 650.0
 mag_capacity = 30
+recoil = 2.0
 reload_time = 2.1
 effective_range = 60.0
 price_karbovantsi = 450

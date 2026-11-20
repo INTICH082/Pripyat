@@ -10,6 +10,7 @@ category = "Гранатомет"
 damage = 380.0
 fire_rate = 18.0
 mag_capacity = 6
+recoil = 4.0
 reload_time = 4.5
 effective_range = 80.0
 price_karbovantsi = 2200

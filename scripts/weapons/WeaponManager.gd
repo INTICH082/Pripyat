@@ -32,6 +32,7 @@ var is_attacking: bool = false
 
 # FPS-компоненты
 var fps_anim_player: AnimationPlayer = null
+var fps_skeleton: Skeleton3D = null
 var weapon_mesh_nodes: Dictionary = {}
 var magazine_nodes: Dictionary = {}
 var muzzle_fx_node: Node3D = null
@@ -53,9 +54,11 @@ func _init_fps_viewmodel() -> void:
 	# Отключаем тени у FPS-рук, чтобы тень отбрасывало только тело CleanerModel
 	_set_shadows_off(fps_viewmodel)
 	
-	fps_anim_player = fps_viewmodel.find_child("AnimationPlayer", true, false) as AnimationPlayer
+	fps_anim_player = _find_node_of_type(fps_viewmodel, "AnimationPlayer") as AnimationPlayer
 	if fps_anim_player:
 		fps_anim_player.animation_finished.connect(_on_animation_finished)
+		
+	fps_skeleton = _find_node_of_type(fps_viewmodel, "Skeleton3D") as Skeleton3D
 		
 	# Кэшируем узлы мешей оружия
 	var weapon_ids = [
@@ -77,6 +80,17 @@ func _init_fps_viewmodel() -> void:
 	muzzle_fx_node = fps_viewmodel.find_child("Muzzle_FX", true, false) as Node3D
 	if muzzle_fx_node:
 		muzzle_fx_node.visible = false
+
+func _find_node_of_type(root: Node, type_name: String) -> Node:
+	if not root:
+		return null
+	if root.is_class(type_name):
+		return root
+	for child in root.get_children():
+		var found = _find_node_of_type(child, type_name)
+		if found:
+			return found
+	return null
 
 func _set_shadows_off(node: Node) -> void:
 	if node is GeometryInstance3D:
@@ -114,7 +128,8 @@ func _equip_weapon(index: int) -> void:
 	can_fire = true
 	
 	_update_weapon_mesh_visibility()
-	_play_fps_anim(current_weapon.id + "_Idle-loop", 0.1)
+	_update_fps_skeleton_bones()
+	_play_fps_anim(current_weapon.id + "_Idle-loop", 0.0)
 	_notify_hud()
 
 func equip_fists() -> void:
@@ -159,12 +174,39 @@ func _update_weapon_mesh_visibility() -> void:
 	if magazine_nodes.has("06_pistol_pt"):
 		magazine_nodes["06_pistol_pt"].visible = (active_id == "06_pistol_pt")
 
+func _update_fps_skeleton_bones() -> void:
+	if not fps_skeleton or not current_weapon:
+		return
+	var active_bone = ""
+	if current_weapon.id != "01_fists":
+		active_bone = "W" + current_weapon.id.substr(0, 2)
+		
+	for i in range(2, 14):
+		var b_name = "W%02d" % i
+		var b_idx = fps_skeleton.find_bone(b_name)
+		if b_idx != -1:
+			if b_name == active_bone:
+				fps_skeleton.set_bone_pose_scale(b_idx, Vector3(1.0, 1.0, 1.0))
+			else:
+				fps_skeleton.set_bone_pose_scale(b_idx, Vector3(0.001, 0.001, 0.001))
+
+func _resolve_fps_anim_name(suffix: String) -> String:
+	if not fps_anim_player:
+		return ""
+	if fps_anim_player.has_animation(suffix):
+		return suffix
+	for a in fps_anim_player.get_animation_list():
+		if a == suffix or a.ends_with("/" + suffix) or a.ends_with(":" + suffix):
+			return a
+	return ""
+
 func _play_fps_anim(anim_name: String, blend_time: float = 0.15) -> void:
 	if not fps_anim_player:
 		return
-	if fps_anim_player.has_animation(anim_name):
-		if fps_anim_player.current_animation != anim_name:
-			fps_anim_player.play(anim_name, blend_time)
+	var full_name = _resolve_fps_anim_name(anim_name)
+	if full_name != "":
+		if fps_anim_player.current_animation != full_name:
+			fps_anim_player.play(full_name, blend_time)
 
 func update_movement_animation(flat_speed: float, is_sprinting: bool) -> void:
 	if is_attacking or is_reloading or not current_weapon or not fps_anim_player:
@@ -252,6 +294,8 @@ func _perform_melee_attack() -> void:
 		
 	await get_tree().create_timer(delay).timeout
 	can_fire = true
+	is_attacking = false
+	_return_to_movement_anim()
 
 func _perform_firearm_attack() -> void:
 	var cur_ammo = current_mags.get(current_weapon.id, 0)
@@ -281,6 +325,8 @@ func _perform_firearm_attack() -> void:
 		
 	await get_tree().create_timer(delay).timeout
 	can_fire = true
+	is_attacking = false
+	_return_to_movement_anim()
 
 func _fire_single_shot() -> void:
 	_flash_muzzle()
@@ -315,6 +361,7 @@ func _perform_flame_attack() -> void:
 			
 	await get_tree().create_timer(0.08).timeout
 	can_fire = true
+	is_attacking = false
 
 func _perform_explosive_attack() -> void:
 	var cur_ammo = current_mags.get(current_weapon.id, 0)
@@ -340,6 +387,8 @@ func _perform_explosive_attack() -> void:
 		
 	await get_tree().create_timer(delay).timeout
 	can_fire = true
+	is_attacking = false
+	_return_to_movement_anim()
 
 func _create_explosion(hit_center: Vector3) -> void:
 	var radius = current_weapon.splash_radius
@@ -411,7 +460,8 @@ func reload() -> void:
 	can_fire = false
 	
 	var reload_anim = wid + "_Reload"
-	if fps_anim_player and fps_anim_player.has_animation(reload_anim):
+	var resolved_reload = _resolve_fps_anim_name(reload_anim)
+	if resolved_reload != "":
 		_play_fps_anim(reload_anim, 0.1)
 	else:
 		await get_tree().create_timer(current_weapon.reload_time).timeout
@@ -442,5 +492,6 @@ func _flash_muzzle() -> void:
 func _apply_camera_recoil(mult: float = 1.0) -> void:
 	if not camera or not current_weapon:
 		return
-	var kick = deg_to_rad(current_weapon.recoil * 0.2 * mult)
+	var r = current_weapon.recoil if ("recoil" in current_weapon and current_weapon.recoil != null) else 1.0
+	var kick = deg_to_rad(r * 0.2 * mult)
 	camera.rotation.x = clamp(camera.rotation.x + kick, deg_to_rad(-85.0), deg_to_rad(85.0))

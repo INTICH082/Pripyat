@@ -41,11 +41,34 @@ func _ready() -> void:
 	
 	if cleaner_model:
 		_setup_shadow_only(cleaner_model)
-		anim_player = cleaner_model.find_child("AnimationPlayer", true, false) as AnimationPlayer
-		if anim_player and anim_player.has_animation("Unarmed_Idle-loop"):
-			anim_player.play("Unarmed_Idle-loop")
+		anim_player = _find_animation_player(cleaner_model)
+		if anim_player:
+			var idle_name = _resolve_anim_name(anim_player, "Unarmed_Idle-loop")
+			if idle_name != "":
+				anim_player.play(idle_name)
 			
 	_update_tool_display()
+
+func _find_animation_player(node: Node) -> AnimationPlayer:
+	if not node:
+		return null
+	if node is AnimationPlayer:
+		return node
+	for child in node.get_children():
+		var found = _find_animation_player(child)
+		if found:
+			return found
+	return null
+
+func _resolve_anim_name(player: AnimationPlayer, suffix: String) -> String:
+	if not player:
+		return ""
+	if player.has_animation(suffix):
+		return suffix
+	for a in player.get_animation_list():
+		if a == suffix or a.ends_with("/" + suffix) or a.ends_with(":" + suffix):
+			return a
+	return ""
 
 func _setup_shadow_only(node: Node) -> void:
 	if node is GeometryInstance3D:
@@ -104,28 +127,46 @@ func _physics_process(delta: float) -> void:
 		var is_sprinting = Input.is_action_pressed("sprint") and flat_speed > 5.0
 		weapon_manager.update_movement_animation(flat_speed, is_sprinting)
 
+func _get_body_anim_prefix() -> String:
+	if current_tool == ToolMode.HANDS or current_tool == ToolMode.BRUSH or not weapon_manager or not weapon_manager.current_weapon:
+		return "Unarmed_"
+	var wid = weapon_manager.current_weapon.id
+	if wid == "02_crowbar":
+		return "Crowbar_"
+	elif wid == "03_spade":
+		return "Spade_"
+	elif wid in ["05_pistol_pl", "06_pistol_pt"]:
+		return "Dozor_"
+	elif wid in ["07_rifle_al", "08_rifle_at"]:
+		return "Rubezh_"
+	elif wid in ["09_rifle_vl", "10_rifle_vt"]:
+		return "Eger_"
+	elif wid in ["11_rpk", "12_flamya_1", "13_launcher_gm"]:
+		return "Iney_"
+	return "Unarmed_"
+
 func _update_character_animation() -> void:
 	if not anim_player:
 		return
 	var flat_speed = Vector2(velocity.x, velocity.z).length()
-	var prefix = "Unarmed_"
+	var prefix = _get_body_anim_prefix()
+	var action_suffix = ""
 	
 	if not is_on_floor():
-		var jump_anim = prefix + "Jump"
-		if anim_player.has_animation(jump_anim) and anim_player.current_animation != jump_anim:
-			anim_player.play(jump_anim)
+		action_suffix = "Jump"
 	elif flat_speed > 5.0:
-		var run_anim = prefix + "Run-loop"
-		if anim_player.has_animation(run_anim) and anim_player.current_animation != run_anim:
-			anim_player.play(run_anim)
+		action_suffix = "Run-loop"
 	elif flat_speed > 0.2:
-		var walk_anim = prefix + "Walk-loop"
-		if anim_player.has_animation(walk_anim) and anim_player.current_animation != walk_anim:
-			anim_player.play(walk_anim)
+		action_suffix = "Walk-loop"
 	else:
-		var idle_anim = prefix + "Idle-loop"
-		if anim_player.has_animation(idle_anim) and anim_player.current_animation != idle_anim:
-			anim_player.play(idle_anim)
+		action_suffix = "Idle-loop"
+		
+	var target_anim = _resolve_anim_name(anim_player, prefix + action_suffix)
+	if target_anim == "":
+		target_anim = _resolve_anim_name(anim_player, "Unarmed_" + action_suffix)
+		
+	if target_anim != "" and anim_player.current_animation != target_anim:
+		anim_player.play(target_anim, 0.2)
 
 func _handle_movement(delta: float) -> void:
 	# Гравитация
@@ -273,11 +314,11 @@ func _update_tool_display() -> void:
 			if weapon_manager:
 				weapon_manager.set_tool_mode_brush()
 		ToolMode.WEAPON:
-			var w_name = weapon_manager.current_weapon.display_name if (weapon_manager and weapon_manager.current_weapon) else "Оружие"
-			mode_name = "Оружие: %s" % w_name
 			if tool_model: tool_model.visible = false
 			if weapon_manager:
 				weapon_manager.set_tool_mode_weapon()
+			var w_name = weapon_manager.current_weapon.display_name if (weapon_manager and weapon_manager.current_weapon) else "Оружие"
+			mode_name = "Оружие: %s" % w_name
 			
 	EventBus.tool_changed.emit(current_tool, mode_name)
 

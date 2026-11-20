@@ -10,6 +10,7 @@ category = "Ближний бой"
 damage = 42.0
 fire_rate = 55.0
 mag_capacity = 0
+recoil = 0.0
 reload_time = 0.0
 effective_range = 2.0
 price_karbovantsi = 60

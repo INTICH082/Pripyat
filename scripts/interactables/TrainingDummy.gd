@@ -10,7 +10,7 @@ var health: float = 500.0
 func _ready() -> void:
 	health = max_health
 
-func take_damage(amount: float, weapon_data: WeaponData = null) -> void:
+func take_damage(amount: float, _weapon_data: WeaponData = null) -> void:
 	health -= amount
 	
 	# Визуальная вспышка и покачивание от удара

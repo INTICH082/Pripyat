@@ -10,6 +10,7 @@ category = "Пистолет"
 damage = 44.0
 fire_rate = 280.0
 mag_capacity = 8
+recoil = 1.6
 reload_time = 1.6
 effective_range = 45.0
 price_karbovantsi = 190

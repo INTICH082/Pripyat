@@ -10,6 +10,7 @@ category = "Пулемет"
 damage = 54.0
 fire_rate = 600.0
 mag_capacity = 40
+recoil = 2.4
 reload_time = 3.6
 effective_range = 100.0
 price_karbovantsi = 1250
