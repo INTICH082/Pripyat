@@ -1,0 +1,18 @@
+﻿[gd_resource type="Resource" script_class="EnemyData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/EnemyData.gd" id="1_edata"]
+
+[resource]
+script = ExtResource("1_edata")
+id = "ant"
+display_name = "Рыжий Муравей-древоточец"
+category = "Насекомое"
+health = 140
+damage = 26
+run_speed = 5.5
+reward_karbovantsi = 40
+habitat = "Рыжий лес, село Копачи, склады"
+restoration_harm = "Кислотой разъедает отремонтированные заборы; возводит земляные холмы-муравейники."
+description = "Рыжий Муравей-древоточец из зоны ЧАЭС."
+is_boss = false
+attracts_to_noise = false

@@ -1,0 +1,18 @@
+﻿[gd_resource type="Resource" script_class="EnemyData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/EnemyData.gd" id="1_edata"]
+
+[resource]
+script = ExtResource("1_edata")
+id = "crow"
+display_name = "Чернобыльский ворон"
+category = "Птица"
+health = 15
+damage = 8
+run_speed = 9
+reward_karbovantsi = 4
+habitat = "Фонари, крыши пятиэтажек"
+restoration_harm = "Пикирует на игрока при переноске открытого мусора, роняет ящики."
+description = "Чернобыльский ворон из зоны ЧАЭС."
+is_boss = false
+attracts_to_noise = false

@@ -1,0 +1,15 @@
+﻿[gd_resource type="Resource" script_class="LocationData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/LocationData.gd" id="1_ldata"]
+
+[resource]
+script = ExtResource("1_ldata")
+id = "08_hospital_126"
+index = 8
+display_name = "Медсанчасть МСЧ-126 (Больница)"
+subtitle = "Медицинский городок"
+radiation_level = "Очень высокий (>50 Р/ч)"
+landscape = "Больничные палаты, хирургические блоки, подвал с одеждой первых пожарных."
+tasks = ["Дезактивация опасных палат", "Утилизация зараженной медицинской тары в свинцовые контейнеры"]
+threats = ["Полесский Кровосос", "Радиоактивные крысы"]
+is_unlocked = false

@@ -1,0 +1,18 @@
+﻿[gd_resource type="Resource" script_class="EnemyData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/EnemyData.gd" id="1_edata"]
+
+[resource]
+script = ExtResource("1_edata")
+id = "controller"
+display_name = "Пси-Мутант «Резонатор»"
+category = "Аномальный"
+health = 420
+damage = 35
+run_speed = 3
+reward_karbovantsi = 220
+habitat = "Бункер ЗГРЛС «Дуга», цеха ЧАЭС"
+restoration_harm = "Генерирует инфразвуковое поле: сбивает прицел, заставляет ронять инструмент."
+description = "Пси-Мутант «Резонатор» из зоны ЧАЭС."
+is_boss = false
+attracts_to_noise = false

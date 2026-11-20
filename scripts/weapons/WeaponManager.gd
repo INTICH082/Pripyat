@@ -2,8 +2,7 @@ class_name WeaponManager
 extends Node3D
 
 ## Менеджер арсенала ликвидатора (13 видов оружия).
-## Управляет FPS-ригом (cleaner_fps.glb), боезапасом, стрельбой,
-## отдачей, процедурными и ключевыми анимациями первого лица.
+## Управляет FPS-ригом, боезапасом, стрельбой, отдачей, дельта-таймерами и сменой классов.
 
 @export var camera: Camera3D
 @export var fps_viewmodel: Node3D
@@ -30,6 +29,13 @@ var can_fire: bool = true
 var is_reloading: bool = false
 var is_attacking: bool = false
 
+# Надежные дельта-таймеры (устраняют баги гонки потоков и зависания)
+var attack_cooldown: float = 0.0
+var reload_timer: float = 0.0
+var muzzle_flash_timer: float = 0.0
+var burst_remaining: int = 0
+var burst_interval_timer: float = 0.0
+
 # FPS-компоненты
 var fps_anim_player: AnimationPlayer = null
 var fps_skeleton: Skeleton3D = null
@@ -47,16 +53,92 @@ func _ready() -> void:
 	if weapons.size() > 0:
 		_equip_weapon(0)
 
+func _physics_process(delta: float) -> void:
+	# 1. Таймер вспышки выстрела
+	if muzzle_flash_timer > 0.0:
+		muzzle_flash_timer -= delta
+		if muzzle_flash_timer <= 0.0 and muzzle_fx_node:
+			muzzle_fx_node.visible = false
+			
+	# 2. Таймер перезарядки (гарантированное завершение без застревания)
+	if is_reloading:
+		reload_timer -= delta
+		if reload_timer <= 0.0:
+			_finish_reload()
+			is_reloading = false
+			can_fire = true
+			_return_to_movement_anim()
+			
+	# 3. Таймер отсечки очереди (режим Абакана)
+	if burst_remaining > 0 and current_weapon:
+		burst_interval_timer -= delta
+		if burst_interval_timer <= 0.0:
+			burst_interval_timer = 0.033
+			burst_remaining -= 1
+			var wid = current_weapon.id
+			if current_mags.get(wid, 0) > 0:
+				current_mags[wid] -= 1
+				_play_fps_anim(wid + "_Fire", 0.0, true)
+				_fire_single_shot()
+				_notify_hud()
+				
+	# 4. Таймер кулдауна атаки
+	if attack_cooldown > 0.0:
+		attack_cooldown -= delta
+		if attack_cooldown <= 0.0 and not is_reloading:
+			can_fire = true
+			is_attacking = false
+			_return_to_movement_anim()
+
+func cancel_actions() -> void:
+	is_reloading = false
+	is_attacking = false
+	can_fire = true
+	attack_cooldown = 0.0
+	reload_timer = 0.0
+	burst_remaining = 0
+	muzzle_flash_timer = 0.0
+	if muzzle_fx_node:
+		muzzle_fx_node.visible = false
+
+func change_character_fps_model(new_model_scene: PackedScene) -> void:
+	if not new_model_scene:
+		return
+	cancel_actions()
+	
+	if fps_viewmodel:
+		fps_viewmodel.queue_free()
+		
+	var new_vm = new_model_scene.instantiate() as Node3D
+	new_vm.name = "FPSViewModel"
+	# Позиция (0, 0, 0) строго соответствует положению камеры в Blender
+	new_vm.transform = Transform3D.IDENTITY
+	
+	if camera:
+		camera.add_child(new_vm)
+	else:
+		add_child(new_vm)
+		
+	fps_viewmodel = new_vm
+	_init_fps_viewmodel()
+	
+	if current_weapon:
+		_equip_weapon(current_index)
+
 func _init_fps_viewmodel() -> void:
 	if not fps_viewmodel:
 		return
 		
-	# Отключаем тени у FPS-рук, чтобы тень отбрасывало только тело CleanerModel
+	weapon_mesh_nodes.clear()
+	magazine_nodes.clear()
+	
+	# Отключаем тени у FPS-рук (тень отбрасывает только тело персонажа)
 	_set_shadows_off(fps_viewmodel)
 	
 	fps_anim_player = _find_node_of_type(fps_viewmodel, "AnimationPlayer") as AnimationPlayer
 	if fps_anim_player:
-		fps_anim_player.animation_finished.connect(_on_animation_finished)
+		if not fps_anim_player.animation_finished.is_connected(_on_animation_finished):
+			fps_anim_player.animation_finished.connect(_on_animation_finished)
 		
 	fps_skeleton = _find_node_of_type(fps_viewmodel, "Skeleton3D") as Skeleton3D
 		
@@ -118,15 +200,12 @@ func _equip_weapon(index: int) -> void:
 	if index < 0 or index >= weapons.size():
 		return
 		
+	cancel_actions()
 	current_index = index
 	current_weapon = weapons[current_index]
 	if current_index > 0:
 		last_weapon_index = current_index
 		
-	is_reloading = false
-	is_attacking = false
-	can_fire = true
-	
 	_update_weapon_mesh_visibility()
 	_update_fps_skeleton_bones()
 	_play_fps_anim(current_weapon.id + "_Idle-loop", 0.0, true)
@@ -144,14 +223,17 @@ func restore_current_weapon() -> void:
 		_equip_weapon(current_index)
 
 func set_tool_mode_hands(is_free_hands: bool) -> void:
+	cancel_actions()
 	set_viewmodel_visible(is_free_hands)
 	if is_free_hands:
 		equip_fists()
 
 func set_tool_mode_brush() -> void:
+	cancel_actions()
 	set_viewmodel_visible(false)
 
 func set_tool_mode_weapon() -> void:
+	cancel_actions()
 	set_viewmodel_visible(true)
 	restore_current_weapon()
 
@@ -164,7 +246,6 @@ func _update_weapon_mesh_visibility() -> void:
 		return
 	var active_id = current_weapon.id
 	
-	# Показываем только меш выбранного оружия
 	for wid in weapon_mesh_nodes:
 		var m_node: Node3D = weapon_mesh_nodes[wid]
 		m_node.visible = (wid == active_id)
@@ -256,7 +337,6 @@ func _notify_hud() -> void:
 func next_weapon() -> void:
 	if weapons.size() <= 1:
 		return
-	# Переключаемся только между боевым оружием (1..12), 0 оставляем для кулаков
 	var next_idx = current_index + 1
 	if next_idx >= weapons.size():
 		next_idx = 1
@@ -284,10 +364,14 @@ func primary_attack() -> void:
 		_perform_firearm_attack()
 
 func _perform_melee_attack() -> void:
+	var wid = current_weapon.id
+	if wid == "01_fists" and GameState and not GameState.consume_stamina(GameState.stamina_cost_punch):
+		return
+		
 	can_fire = false
 	is_attacking = true
-	var wid = current_weapon.id
 	var delay = 60.0 / max(1.0, current_weapon.fire_rate)
+	attack_cooldown = delay
 	
 	var strike_anim = wid + "_Strike"
 	if wid == "01_fists":
@@ -298,15 +382,9 @@ func _perform_melee_attack() -> void:
 		fps_anim_player.speed_scale = 1.0
 	_play_fps_anim(strike_anim, 0.0, true)
 	
-	# Raycast удара
 	var result = _raycast_attack(current_weapon.effective_range)
 	if result:
 		_apply_hit(result, current_weapon.damage)
-		
-	await get_tree().create_timer(delay).timeout
-	can_fire = true
-	is_attacking = false
-	_return_to_movement_anim()
 
 func _perform_firearm_attack() -> void:
 	var cur_ammo = current_mags.get(current_weapon.id, 0)
@@ -318,28 +396,23 @@ func _perform_firearm_attack() -> void:
 	is_attacking = true
 	var wid = current_weapon.id
 	var delay = 60.0 / max(1.0, current_weapon.fire_rate)
+	attack_cooldown = delay
+	
 	if fps_anim_player:
 		fps_anim_player.speed_scale = 1.0
 	
 	if current_weapon.is_burst:
-		# Режим Абакана (отсечка по 2 патрона с темпом 1800 выстр/мин)
-		for b in range(current_weapon.burst_count):
-			if current_mags[wid] > 0:
-				current_mags[wid] -= 1
-				_play_fps_anim(wid + "_Fire", 0.0, true)
-				_fire_single_shot()
-				_notify_hud()
-			await get_tree().create_timer(0.033).timeout
+		current_mags[wid] -= 1
+		_play_fps_anim(wid + "_Fire", 0.0, true)
+		_fire_single_shot()
+		_notify_hud()
+		burst_remaining = current_weapon.burst_count - 1
+		burst_interval_timer = 0.033
 	else:
 		current_mags[wid] -= 1
 		_play_fps_anim(wid + "_Fire", 0.0, true)
 		_fire_single_shot()
 		_notify_hud()
-		
-	await get_tree().create_timer(delay).timeout
-	can_fire = true
-	is_attacking = false
-	_return_to_movement_anim()
 
 func _fire_single_shot() -> void:
 	_flash_muzzle()
@@ -357,6 +430,7 @@ func _perform_flame_attack() -> void:
 		
 	can_fire = false
 	is_attacking = true
+	attack_cooldown = 0.08
 	var wid = current_weapon.id
 	if fps_anim_player:
 		fps_anim_player.speed_scale = 1.0
@@ -367,16 +441,13 @@ func _perform_flame_attack() -> void:
 	_play_fps_anim(wid + "_Fire", 0.05, false)
 	_apply_camera_recoil(0.2)
 	
-	# Огненная струя
 	var result = _raycast_attack(current_weapon.effective_range)
 	if result:
 		_apply_hit(result, current_weapon.damage * 0.2)
-		if result.collider is DirtSpot:
+		if result.collider is DirtPatch:
+			(result.collider as DirtPatch).scrub_at_point(result.position, 0.4, 0.6)
+		elif result.collider is DirtSpot:
 			(result.collider as DirtSpot).scrub(0.5)
-			
-	await get_tree().create_timer(0.08).timeout
-	can_fire = true
-	is_attacking = false
 
 func _perform_explosive_attack() -> void:
 	var cur_ammo = current_mags.get(current_weapon.id, 0)
@@ -386,6 +457,9 @@ func _perform_explosive_attack() -> void:
 		
 	can_fire = false
 	is_attacking = true
+	var delay = 60.0 / max(1.0, current_weapon.fire_rate)
+	attack_cooldown = delay
+	
 	var wid = current_weapon.id
 	if fps_anim_player:
 		fps_anim_player.speed_scale = 1.0
@@ -397,15 +471,9 @@ func _perform_explosive_attack() -> void:
 	_flash_muzzle()
 	_apply_camera_recoil(1.5)
 	
-	var delay = 60.0 / max(1.0, current_weapon.fire_rate)
 	var result = _raycast_attack(current_weapon.effective_range)
 	if result:
 		_create_explosion(result.position)
-		
-	await get_tree().create_timer(delay).timeout
-	can_fire = true
-	is_attacking = false
-	_return_to_movement_anim()
 
 func _create_explosion(hit_center: Vector3) -> void:
 	var radius = current_weapon.splash_radius
@@ -432,6 +500,8 @@ func _create_explosion(hit_center: Vector3) -> void:
 			elif col is RigidBody3D:
 				var dir = (col.global_position - hit_center).normalized()
 				col.apply_central_impulse(dir * (dmg * 0.4 * falloff))
+			elif col is DirtPatch:
+				(col as DirtPatch).scrub_at_point(hit_center, dmg * 0.05, radius)
 
 func _raycast_attack(range_dist: float) -> Dictionary:
 	if not camera:
@@ -447,7 +517,6 @@ func _raycast_attack(range_dist: float) -> Dictionary:
 	query.collide_with_bodies = true
 	query.collision_mask = 1 | 2
 	
-	# Исключаем тело самого игрока, чтобы можно было без ограничений стрелять вертикально вниз (в пол/под ноги)
 	var player_node = get_tree().get_first_node_in_group("player")
 	if player_node:
 		var rids: Array[RID] = []
@@ -469,6 +538,8 @@ func _apply_hit(ray_result: Dictionary, damage_amount: float) -> void:
 	elif col is RigidBody3D:
 		var impulse_dir = -camera.global_transform.basis.z
 		col.apply_central_impulse(impulse_dir * (damage_amount * 0.15))
+	elif col is DirtPatch:
+		(col as DirtPatch).scrub_at_point(pos, 0.35, 0.4)
 	elif col is DirtSpot and (current_weapon.can_dig or current_weapon.can_burn_weeds):
 		(col as DirtSpot).scrub(0.3)
 
@@ -485,17 +556,12 @@ func reload() -> void:
 		
 	is_reloading = true
 	can_fire = false
+	reload_timer = current_weapon.reload_time
 	
 	var reload_anim = wid + "_Reload"
 	var resolved_reload = _resolve_fps_anim_name(reload_anim)
 	if resolved_reload != "":
 		_play_fps_anim(reload_anim, 0.1)
-	else:
-		await get_tree().create_timer(current_weapon.reload_time).timeout
-		_finish_reload()
-		is_reloading = false
-		can_fire = true
-		_return_to_movement_anim()
 
 func _finish_reload() -> void:
 	if not current_weapon:
@@ -512,9 +578,7 @@ func _finish_reload() -> void:
 func _flash_muzzle() -> void:
 	if muzzle_fx_node:
 		muzzle_fx_node.visible = true
-		var t = create_tween()
-		t.tween_interval(0.04)
-		t.tween_callback(func(): if muzzle_fx_node: muzzle_fx_node.visible = false)
+		muzzle_flash_timer = 0.045
 
 func _apply_camera_recoil(mult: float = 1.0) -> void:
 	if not camera or not current_weapon:

@@ -1,0 +1,18 @@
+﻿[gd_resource type="Resource" script_class="EnemyData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/EnemyData.gd" id="1_edata"]
+
+[resource]
+script = ExtResource("1_edata")
+id = "stag"
+display_name = "Облучённый Олень"
+category = "Мутант"
+health = 210
+damage = 38
+run_speed = 9.2
+reward_karbovantsi = 60
+habitat = "Окрестности Дуги, скверы, аллеи"
+restoration_harm = "Разносит свежевысаженные клумбы и ломает деревянные заборы рогами."
+description = "Облучённый Олень из зоны ЧАЭС."
+is_boss = false
+attracts_to_noise = false

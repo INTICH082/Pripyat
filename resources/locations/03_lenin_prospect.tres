@@ -1,0 +1,15 @@
+﻿[gd_resource type="Resource" script_class="LocationData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/LocationData.gd" id="1_ldata"]
+
+[resource]
+script = ExtResource("1_ldata")
+id = "03_lenin_prospect"
+index = 3
+display_name = "Проспект Ленина и Центральная площадь"
+subtitle = "Центральный район"
+radiation_level = "Средний"
+landscape = "Широкие проспекты, ДК «Энергетик», Гостиница «Полесье», брошенные автобусы."
+tasks = ["Расчистка проезжей части", "Восстановление витражей ДК", "Запуск уличных фонарей"]
+threats = ["Слепые псы", "Одичавшие мародеры"]
+is_unlocked = false

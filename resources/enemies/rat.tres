@@ -1,0 +1,18 @@
+﻿[gd_resource type="Resource" script_class="EnemyData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/EnemyData.gd" id="1_edata"]
+
+[resource]
+script = ExtResource("1_edata")
+id = "rat"
+display_name = "Радиоактивная крыса"
+category = "Грызун"
+health = 20
+damage = 6
+run_speed = 3.5
+reward_karbovantsi = 3
+habitat = "Мусорные кучи, подвалы"
+restoration_harm = "Кусает за руки при сборе мусора; растаскивает собранный хлам обратно."
+description = "Радиоактивная крыса из зоны ЧАЭС."
+is_boss = false
+attracts_to_noise = false

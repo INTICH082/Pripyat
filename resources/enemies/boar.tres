@@ -1,0 +1,18 @@
+﻿[gd_resource type="Resource" script_class="EnemyData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/EnemyData.gd" id="1_edata"]
+
+[resource]
+script = ExtResource("1_edata")
+id = "boar"
+display_name = "Чернобыльский Секач (Вепрь)"
+category = "Мутант"
+health = 320
+damage = 45
+run_speed = 7
+reward_karbovantsi = 75
+habitat = "Сельские дворы, Городской парк"
+restoration_harm = "С разбега сносит игрока, выбивает предметы из рук, ломает скамейки и урны."
+description = "Чернобыльский Секач (Вепрь) из зоны ЧАЭС."
+is_boss = false
+attracts_to_noise = true

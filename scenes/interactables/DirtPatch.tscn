@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://scripts/interactables/DirtPatch.gd" id="1_patch"]
 
-[node name="DirtPatch" type="Node3D"]
+[node name="DirtPatch" type="StaticBody3D"]
 script = ExtResource("1_patch")
 grid_width = 4
 grid_height = 3

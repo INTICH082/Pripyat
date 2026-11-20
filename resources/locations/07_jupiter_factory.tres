@@ -1,0 +1,15 @@
+﻿[gd_resource type="Resource" script_class="LocationData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/LocationData.gd" id="1_ldata"]
+
+[resource]
+script = ExtResource("1_ldata")
+id = "07_jupiter_factory"
+index = 7
+display_name = "Завод «Юпитер»"
+subtitle = "Промышленная зона"
+radiation_level = "Высокий"
+landscape = "Тяжелые производственные цеха, мостовые краны, административный корпус."
+tasks = ["Разбор завалов рухнувших перекрытий", "Распил станков болгаркой на металлолом", "Зачистка от мародеров"]
+threats = ["«Одичавшие» мародеры", "Полесский Кровосос"]
+is_unlocked = false

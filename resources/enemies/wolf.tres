@@ -1,0 +1,18 @@
+﻿[gd_resource type="Resource" script_class="EnemyData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/EnemyData.gd" id="1_edata"]
+
+[resource]
+script = ExtResource("1_edata")
+id = "wolf"
+display_name = "Чернобыльский волк"
+category = "Хищник"
+health = 130
+damage = 32
+run_speed = 7.8
+reward_karbovantsi = 35
+habitat = "Лес у села Копачи, ЗГРЛС «Дуга»"
+restoration_harm = "Бесшумно атакует со спины одиночных рабочих; накладывает кровотечение."
+description = "Чернобыльский волк из зоны ЧАЭС."
+is_boss = false
+attracts_to_noise = false

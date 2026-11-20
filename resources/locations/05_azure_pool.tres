@@ -1,0 +1,15 @@
+﻿[gd_resource type="Resource" script_class="LocationData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/LocationData.gd" id="1_ldata"]
+
+[resource]
+script = ExtResource("1_ldata")
+id = "05_azure_pool"
+index = 5
+display_name = "Бассейн «Лазурный»"
+subtitle = "Спорткомплекс"
+radiation_level = "Средний"
+landscape = "Закрытый спорткомплекс, смотровые вышки, чаша бассейна, спортзал."
+tasks = ["Откачка радиоактивной жижи со дна чаши", "Отмывка кафельной плитки мойкой", "Заделка проломов крыши"]
+threats = ["Полесский Кровосос", "Радиоактивные крысы"]
+is_unlocked = false

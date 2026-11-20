@@ -1,0 +1,18 @@
+﻿[gd_resource type="Resource" script_class="EnemyData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/EnemyData.gd" id="1_edata"]
+
+[resource]
+script = ExtResource("1_edata")
+id = "blind_dog"
+display_name = "Слепой пес (Одичавший)"
+category = "Мутант"
+health = 65
+damage = 18
+run_speed = 6.5
+reward_karbovantsi = 15
+habitat = "Дворы, проспекты, скверы"
+restoration_harm = "Нападают стаями по 3-5 особей; сбегаются на рев моторов и мойки."
+description = "Слепой пес (Одичавший) из зоны ЧАЭС."
+is_boss = false
+attracts_to_noise = true

@@ -1,0 +1,15 @@
+﻿[gd_resource type="Resource" script_class="LocationData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/LocationData.gd" id="1_ldata"]
+
+[resource]
+script = ExtResource("1_ldata")
+id = "04_amusement_park"
+index = 4
+display_name = "Городской парк аттракционов"
+subtitle = "Парковый сектор"
+radiation_level = "Средний / Высокий"
+landscape = "Колесо обозрения, автодром, густые дикие заросли тополей."
+tasks = ["Покос кустарников", "Спил аварийных тополей", "Очистка ржавых каруселей", "Подача питания на колесо"]
+threats = ["Чернобыльский Секач", "Слепые псы"]
+is_unlocked = false

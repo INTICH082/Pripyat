@@ -1,0 +1,15 @@
+﻿[gd_resource type="Resource" script_class="LocationData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/LocationData.gd" id="1_ldata"]
+
+[resource]
+script = ExtResource("1_ldata")
+id = "06_duga_radar"
+index = 6
+display_name = "ЗГРЛС «Дуга» (Объект «Чернобыль-2»)"
+subtitle = "Военно-технический комплекс"
+radiation_level = "Высокий"
+landscape = "Гигантская 150-метровая стена антенн, плац, казармы, бункер связи с ЭВМ."
+tasks = ["Демонтаж аварийных кабелей", "Сбор сотен тонн металлолома", "Зачистка от стай волков и оленей"]
+threats = ["Чернобыльские волки", "Облучённый Олень", "Пси-Мутант «Резонатор»"]
+is_unlocked = false

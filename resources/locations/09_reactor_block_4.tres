@@ -1,0 +1,15 @@
+﻿[gd_resource type="Resource" script_class="LocationData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/LocationData.gd" id="1_ldata"]
+
+[resource]
+script = ExtResource("1_ldata")
+id = "09_reactor_block_4"
+index = 9
+display_name = "ЧАЭС: 4-й Энергоблок и Саркофаг"
+subtitle = "Эпицентр аварии"
+radiation_level = "Смертельный (>100 Р/ч)"
+landscape = "Разрушенный реакторный зал, труба ВТ-2, графитовые завалы, смертельный фон."
+tasks = ["Работа в свинцовых костюмах и на БРДМ", "Сбор обломков графита в капсулы", "Дезактивация бетона", "Укрепление саркофага"]
+threats = ["Медведь-шатун (Босс)", "Пси-Мутант «Резонатор»"]
+is_unlocked = false

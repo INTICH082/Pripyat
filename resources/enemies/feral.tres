@@ -1,0 +1,18 @@
+﻿[gd_resource type="Resource" script_class="EnemyData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/EnemyData.gd" id="1_edata"]
+
+[resource]
+script = ExtResource("1_edata")
+id = "feral"
+display_name = "«Одичавший» (Мародер)"
+category = "Человек"
+health = 110
+damage = 25
+run_speed = 4.8
+reward_karbovantsi = 50
+habitat = "Квартиры, темные цеха «Юпитера»"
+restoration_harm = "Засели в зданиях; швыряют кирпичи, стреляют из самопалов, крадут металлолом."
+description = "«Одичавший» (Мародер) из зоны ЧАЭС."
+is_boss = false
+attracts_to_noise = false

@@ -1,8 +1,8 @@
 class_name PlayerController
 extends CharacterBody3D
 
-## Первоклассный 1st-person контроллер с поддержкой переноса физических объектов
-## и послойной очистки поверхностей (в духе friendslop / cleaning games).
+## Первоклассный 1st-person контроллер с поддержкой динамической смены классов,
+## физического переноса предметов и высокопроизводительной очистки поверхностей.
 
 enum ToolMode { HANDS, BRUSH, WEAPON }
 
@@ -43,10 +43,15 @@ const CROUCHING_HEAD_Y: float = 1.05
 # Покачивание головы (Head Bob)
 var bob_time: float = 0.0
 const BOB_FREQ: float = 2.4
-const BOB_AMP: float = 0.04
+const BOB_AMP: float = 0.035
 
 func _ready() -> void:
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+	
+	if camera and GameState:
+		camera.fov = GameState.camera_fov
+		
+	EventBus.character_class_changed.connect(_on_character_class_changed)
 	
 	if cleaner_model:
 		_setup_shadow_only(cleaner_model)
@@ -57,6 +62,34 @@ func _ready() -> void:
 				anim_player.play(idle_name)
 			
 	_update_tool_display()
+
+func _on_character_class_changed(class_id: String, class_data: Dictionary) -> void:
+	# Смена 3D-модели тела от третьего лица
+	var body_path = class_data.get("body_model_path", "")
+	if body_path != "" and ResourceLoader.exists(body_path):
+		if cleaner_model:
+			cleaner_model.queue_free()
+		var scene = ResourceLoader.load(body_path) as PackedScene
+		if scene:
+			var new_body = scene.instantiate() as Node3D
+			new_body.name = "CleanerModel"
+			# Модель развернута лицом вперед (-Z)
+			new_body.transform = Transform3D(Basis(Vector3(0, 1, 0), deg_to_rad(180)), Vector3.ZERO)
+			add_child(new_body)
+			cleaner_model = new_body
+			_setup_shadow_only(cleaner_model)
+			anim_player = _find_animation_player(cleaner_model)
+			if anim_player:
+				var idle_name = _resolve_anim_name(anim_player, "Unarmed_Idle-loop")
+				if idle_name != "":
+					anim_player.play(idle_name)
+					
+	# Смена FPS-модели рук и оружия
+	var fps_path = class_data.get("fps_model_path", "")
+	if fps_path != "" and weapon_manager and ResourceLoader.exists(fps_path):
+		var fps_scene = ResourceLoader.load(fps_path) as PackedScene
+		if fps_scene:
+			weapon_manager.change_character_fps_model(fps_scene)
 
 func _find_animation_player(node: Node) -> AnimationPlayer:
 	if not node:
@@ -86,17 +119,19 @@ func _setup_shadow_only(node: Node) -> void:
 		_setup_shadow_only(child)
 
 func _unhandled_input(event: InputEvent) -> void:
-	# Захват мыши / выход по Esc
+	# Выход / захват мыши по Esc
 	if event.is_action_pressed("ui_cancel"):
 		if Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
 			Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 		else:
 			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 
-	# Вращение камеры от 1-го лица
+	# Вращение камеры от 1-го лица (как в Blender)
 	if event is InputEventMouseMotion and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
-		rotate_y(-event.relative.x * mouse_sensitivity)
-		head.rotate_x(-event.relative.y * mouse_sensitivity)
+		var sens = GameState.mouse_sensitivity if GameState else mouse_sensitivity
+		var invert = -1.0 if (GameState and GameState.invert_y) else 1.0
+		rotate_y(-event.relative.x * sens)
+		head.rotate_x(-event.relative.y * sens * invert)
 		head.rotation.x = clamp(head.rotation.x, deg_to_rad(-max_pitch), deg_to_rad(max_pitch))
 
 	# Переключение инструментов (1 - Руки, 2 - Щётка, 3 - Оружие)
@@ -130,7 +165,6 @@ func _physics_process(delta: float) -> void:
 	_apply_head_bob(delta)
 	_update_character_animation()
 	
-	# Обновление FPS-анимации рук в зависимости от скорости, спринта, приседания и воздуха
 	if weapon_manager and (current_tool == ToolMode.WEAPON or (current_tool == ToolMode.HANDS and held_trash == null)):
 		var flat_speed = Vector2(velocity.x, velocity.z).length()
 		var is_sprinting = Input.is_action_pressed("sprint") and flat_speed > 4.0 and not is_crouching and is_on_floor()
@@ -187,11 +221,10 @@ func _can_stand_up() -> bool:
 	return result.is_empty()
 
 func _handle_movement(delta: float) -> void:
-	# Гравитация
 	if not is_on_floor():
 		velocity.y -= gravity * delta
 
-	# Приседание (Ctrl или C)
+	# Приседание
 	var wants_crouch = Input.is_action_pressed("crouch") or Input.is_action_pressed("crouch_c")
 	if wants_crouch:
 		is_crouching = true
@@ -199,7 +232,6 @@ func _handle_movement(delta: float) -> void:
 		if is_crouching and _can_stand_up():
 			is_crouching = false
 
-	# Плавная смена высоты головы и коллизии
 	var target_head_y = CROUCHING_HEAD_Y if is_crouching else STANDING_HEAD_Y
 	head.position.y = move_toward(head.position.y, target_head_y, 7.0 * delta)
 	
@@ -208,15 +240,21 @@ func _handle_movement(delta: float) -> void:
 		collision_shape.shape.height = move_toward(collision_shape.shape.height, target_h, 7.0 * delta)
 		collision_shape.position.y = collision_shape.shape.height * 0.5
 
-	# Прыжок (нельзя прыгать во время приседания)
+	# Прыжок с расходом стамины
 	if Input.is_action_just_pressed("jump") and is_on_floor() and not is_crouching:
-		velocity.y = jump_velocity
+		if GameState and GameState.consume_stamina(GameState.stamina_cost_jump):
+			velocity.y = jump_velocity
 
 	# Направление движения
 	var input_dir = Input.get_vector("move_left", "move_right", "move_forward", "move_backward")
 	var direction = (transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
 	
-	var is_sprinting = Input.is_action_pressed("sprint") and not is_crouching and is_on_floor() and input_dir.y < 0
+	var wants_sprint = Input.is_action_pressed("sprint") and not is_crouching and is_on_floor() and input_dir.y < 0
+	var is_sprinting = false
+	if wants_sprint and GameState and GameState.can_sprint():
+		if GameState.drain_stamina_continuous(GameState.stamina_drain_sprint, delta):
+			is_sprinting = true
+	
 	var target_speed = walk_speed
 	if is_crouching:
 		target_speed = crouch_speed
@@ -253,7 +291,6 @@ func _handle_interaction(delta: float) -> void:
 		if Input.is_action_just_pressed("drop") or Input.is_action_just_pressed("interact"):
 			_drop_held_trash(Vector3.ZERO)
 		elif Input.is_action_just_pressed("primary_action"):
-			# Метнуть вперёд
 			var throw_dir = -camera.global_transform.basis.z
 			_drop_held_trash(throw_dir)
 		return
@@ -275,15 +312,26 @@ func _handle_interaction(delta: float) -> void:
 
 	# 3. Если в руках инструмент (Режим BRUSH / Щетка)
 	elif current_tool == ToolMode.BRUSH:
-		var dirt_spot = _find_dirt_spot(collider)
-		if dirt_spot:
+		var patch = _find_dirt_patch(collider)
+		var spot = _find_dirt_spot(collider)
+		
+		if patch:
 			current_prompt = "[ЛКМ] Соскрести загрязнение"
 			if Input.is_action_pressed("primary_action"):
-				dirt_spot.scrub(delta)
+				var hit_point = interaction_ray.get_collision_point()
+				var clean_mod = GameState.cleaning_modifier if GameState else 1.0
+				var brush_r = 0.38 * (1.5 if (GameState and GameState.current_class_id == "cleaner") else 1.0)
+				patch.scrub_at_point(hit_point, delta * clean_mod, brush_r)
+				_animate_tool_action()
+		elif spot:
+			current_prompt = "[ЛКМ] Соскрести загрязнение"
+			if Input.is_action_pressed("primary_action"):
+				var clean_mod = GameState.cleaning_modifier if GameState else 1.0
+				spot.scrub(delta * clean_mod)
 				_animate_tool_action()
 		else:
 			if collider != null:
-				current_prompt = "Направьте на грязь, мох или пыль"
+				current_prompt = "Направьте на грязь, мох или копоть"
 
 	# 4. Если в руках оружие (Режим WEAPON)
 	elif current_tool == ToolMode.WEAPON:
@@ -305,16 +353,27 @@ func _handle_interaction(delta: float) -> void:
 				if Input.is_action_just_pressed("primary_action"):
 					weapon_manager.primary_attack()
 
+func _find_dirt_patch(node: Node) -> DirtPatch:
+	if not node:
+		return null
+	if node is DirtPatch:
+		return node
+	if node.get_parent() is DirtPatch:
+		return node.get_parent() as DirtPatch
+	return null
+
 func _find_dirt_spot(node: Node) -> DirtSpot:
+	if not node:
+		return null
 	if node is DirtSpot:
 		return node
-	if node and node.get_parent() is DirtSpot:
+	if node.get_parent() is DirtSpot:
 		return node.get_parent() as DirtSpot
 	return null
 
 func _pickup_trash(trash: CarryableTrash) -> void:
 	held_trash = trash
-	trash.pickup(hold_socket)
+	trash.pickup(hold_socket, self)
 	if weapon_manager:
 		weapon_manager.set_viewmodel_visible(false)
 
@@ -328,7 +387,6 @@ func _drop_held_trash(impulse_dir: Vector3) -> void:
 
 func _set_tool(mode: ToolMode) -> void:
 	if held_trash != null:
-		# Сначала выбрасываем то, что в руках
 		_drop_held_trash(Vector3.ZERO)
 		
 	current_tool = mode
@@ -363,7 +421,6 @@ func _update_tool_display() -> void:
 	EventBus.tool_changed.emit(current_tool, mode_name)
 
 func _animate_tool_action() -> void:
-	# Легкая анимация покачивания инструмента при чистке
 	if tool_model and tool_model.visible:
 		tool_model.rotation_degrees.z = sin(Time.get_ticks_msec() * 0.03) * 8.0
 

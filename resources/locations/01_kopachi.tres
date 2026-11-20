@@ -1,0 +1,15 @@
+﻿[gd_resource type="Resource" script_class="LocationData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/LocationData.gd" id="1_ldata"]
+
+[resource]
+script = ExtResource("1_ldata")
+id = "01_kopachi"
+index = 1
+display_name = "Заброшенное село Копачи"
+subtitle = "Стартовый пригород"
+radiation_level = "Низкий"
+landscape = "Песчаные дороги, деревянные избы, колодцы, яблоневые сады, коровники."
+tasks = ["Уборка сельхозотходов", "Спил гнилых заборов", "Расчистка дороги к городу"]
+threats = ["Волки", "Кабаны", "Крысы"]
+is_unlocked = true

@@ -1,0 +1,18 @@
+﻿[gd_resource type="Resource" script_class="EnemyData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/EnemyData.gd" id="1_edata"]
+
+[resource]
+script = ExtResource("1_edata")
+id = "bear"
+display_name = "Медведь-шатун"
+category = "Суперхищник / Босс"
+health = 850
+damage = 75
+run_speed = 6.8
+reward_karbovantsi = 280
+habitat = "Глухие леса у села, промзона ЧАЭС"
+restoration_harm = "Босс локации. Переворачивает ручные тачки, ломает кузова грузовиков."
+description = "Медведь-шатун из зоны ЧАЭС."
+is_boss = true
+attracts_to_noise = false

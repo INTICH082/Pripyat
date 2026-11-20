@@ -15,6 +15,18 @@ signal dirt_cleaned(reward_rubles: int, world_pos: Vector3)
 signal currency_changed(new_amount: int, delta: int)
 signal cleanliness_updated(cleaned_count: int, total_count: int, percent: float)
 
+# Характеристики выживания и класс персонажа
+signal health_changed(current_hp: float, max_hp: float, delta: float)
+signal radiation_changed(current_rad: float, max_rad: float, delta: float)
+signal stamina_changed(current_sta: float, max_sta: float, delta: float)
+signal character_class_changed(class_id: String, class_data: Dictionary)
+signal player_damaged(amount: float)
+signal control_settings_changed()
+
+# Локации и Противники
+signal location_changed(location_id: String, location_data: Dictionary)
+signal enemy_defeated(enemy_id: String, reward_karbovantsi: int)
+
 # Инструменты и Оружие
 signal tool_changed(tool_mode: int, tool_name: String)
 signal weapon_switched(weapon: WeaponData, current_ammo: int, reserve_ammo: int)
@@ -38,12 +50,16 @@ func _setup_default_inputs() -> void:
 	_ensure_key_action("interact", KEY_E)
 	_ensure_key_action("drop", KEY_G)
 	_ensure_mouse_action("primary_action", MOUSE_BUTTON_LEFT)
+	_ensure_mouse_action("secondary_action", MOUSE_BUTTON_RIGHT)
 	_ensure_key_action("tool_hands", KEY_1)
 	_ensure_key_action("tool_brush", KEY_2)
 	_ensure_key_action("weapon_mode", KEY_3)
 	_ensure_key_action("reload", KEY_R)
 	_ensure_key_action("weapon_next", KEY_BRACKETRIGHT)
 	_ensure_key_action("weapon_prev", KEY_BRACKETLEFT)
+	_ensure_key_action("character_select", KEY_TAB)
+	_ensure_key_action("quick_heal", KEY_H)
+	_ensure_key_action("flashlight", KEY_F)
 
 func _ensure_key_action(action_name: String, key_code: Key) -> void:
 	if not InputMap.has_action(action_name):
@@ -58,3 +74,32 @@ func _ensure_mouse_action(action_name: String, mouse_button: MouseButton) -> voi
 		var ev = InputEventMouseButton.new()
 		ev.button_index = mouse_button
 		InputMap.action_add_event(action_name, ev)
+
+## Программное переназначение клавиши действия
+func rebind_action_key(action_name: String, new_key: Key) -> void:
+	if not InputMap.has_action(action_name):
+		InputMap.add_action(action_name)
+	# Очищаем только события клавиатуры для данного действия
+	for ev in InputMap.action_get_events(action_name):
+		if ev is InputEventKey:
+			InputMap.action_erase_event(action_name, ev)
+	var new_ev = InputEventKey.new()
+	new_ev.physical_keycode = new_key
+	InputMap.action_add_event(action_name, new_ev)
+	control_settings_changed.emit()
+
+## Получение человекочитаемого названия клавиши для действия
+func get_action_key_text(action_name: String) -> String:
+	if not InputMap.has_action(action_name):
+		return ""
+	for ev in InputMap.action_get_events(action_name):
+		if ev is InputEventKey:
+			return OS.get_keycode_string(ev.physical_keycode)
+		elif ev is InputEventMouseButton:
+			match ev.button_index:
+				MOUSE_BUTTON_LEFT: return "ЛКМ"
+				MOUSE_BUTTON_RIGHT: return "ПКМ"
+				MOUSE_BUTTON_MIDDLE: return "СКМ"
+				MOUSE_BUTTON_WHEEL_UP: return "Колесо Вверх"
+				MOUSE_BUTTON_WHEEL_DOWN: return "Колесо Вниз"
+	return ""

@@ -1,0 +1,18 @@
+﻿[gd_resource type="Resource" script_class="EnemyData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/EnemyData.gd" id="1_edata"]
+
+[resource]
+script = ExtResource("1_edata")
+id = "bloodsucker"
+display_name = "Полесский Кровосос"
+category = "Мутант"
+health = 260
+damage = 42
+run_speed = 8.5
+reward_karbovantsi = 95
+habitat = "Подвалы хрущевок, бассейн «Лазурный», катакомбы «Юпитера»"
+restoration_harm = "Частичная мимикрия в темноте. Нападает из вентиляции, высасывает кровь и лечится."
+description = "Полесский Кровосос из зоны ЧАЭС."
+is_boss = false
+attracts_to_noise = false
