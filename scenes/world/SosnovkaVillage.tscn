@@ -1,0 +1,103 @@
+[gd_scene format=3 uid="uid://sosnovka001"]
+
+[ext_resource type="Script" path="res://scripts/world/SosnovkaVillage.gd" id="1_world"]
+[ext_resource type="PackedScene" uid="uid://dfplayer001" path="res://scenes/player/Player.tscn" id="2_player"]
+[ext_resource type="PackedScene" uid="uid://bvyhud001" path="res://scenes/ui/HUD.tscn" id="3_hud"]
+[ext_resource type="PackedScene" uid="uid://xxkrek7olcoe" path="res://assets/models/environment/sosnovka/Sosnovka_Market_Path.glb" id="4_map"]
+[ext_resource type="PackedScene" uid="uid://cbin001" path="res://scenes/interactables/TrashBin.tscn" id="5_bin"]
+[ext_resource type="PackedScene" uid="uid://dtrashbox001" path="res://scenes/interactables/TrashItem.tscn" id="6_trash"]
+[ext_resource type="PackedScene" uid="uid://cdirtpatch001" path="res://scenes/interactables/DirtPatch.tscn" id="7_dirt"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_pripyat"]
+sky_top_color = Color(0.38, 0.44, 0.52, 1)
+sky_horizon_color = Color(0.62, 0.66, 0.7, 1)
+ground_bottom_color = Color(0.18, 0.2, 0.18, 1)
+ground_horizon_color = Color(0.55, 0.58, 0.6, 1)
+sun_angle_max = 30.0
+
+[sub_resource type="Sky" id="Sky_sosnovka"]
+sky_material = SubResource("ProceduralSkyMaterial_pripyat")
+
+[sub_resource type="Environment" id="Environment_sosnovka"]
+background_mode = 2
+sky = SubResource("Sky_sosnovka")
+ambient_light_source = 3
+ambient_light_color = Color(0.6, 0.65, 0.7, 1)
+ambient_light_energy = 0.85
+tonemap_mode = 3
+tonemap_white = 1.2
+ssao_enabled = true
+glow_enabled = true
+glow_intensity = 0.35
+fog_enabled = true
+fog_light_color = Color(0.62, 0.66, 0.7, 1)
+fog_density = 0.003
+fog_sky_affect = 0.4
+fog_aerial_perspective = 0.3
+
+[node name="SosnovkaVillage" type="Node3D"]
+script = ExtResource("1_world")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_sosnovka")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866025, -0.353553, 0.353553, 0, 0.707107, 0.707107, -0.5, -0.612372, 0.612372, 25, 30, 45)
+light_color = Color(0.96, 0.94, 0.9, 1)
+light_energy = 1.15
+shadow_enabled = true
+directional_shadow_max_distance = 150.0
+directional_shadow_split_1 = 0.1
+directional_shadow_split_2 = 0.25
+directional_shadow_split_3 = 0.55
+directional_shadow_blend_splits = true
+
+[node name="SosnovkaMap" parent="." instance=ExtResource("4_map")]
+
+[node name="Player" parent="." instance=ExtResource("2_player")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 25, 0.25, 45)
+
+[node name="HUD" parent="." instance=ExtResource("3_hud")]
+
+[node name="TrashBin" parent="." instance=ExtResource("5_bin")]
+transform = Transform3D(0.965926, 0, 0.258819, 0, 1, 0, -0.258819, 0, 0.965926, 27.5, 0.02, 42)
+
+[node name="TrashObjects" type="Node3D" parent="."]
+
+[node name="Box_1" parent="TrashObjects" instance=ExtResource("6_trash")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 23.5, 0.2, 41.5)
+trash_name = "Сгнивший деревянный ящик"
+reward_rubles = 6
+
+[node name="Box_2" parent="TrashObjects" instance=ExtResource("6_trash")]
+transform = Transform3D(0.906308, 0, -0.422618, 0, 1, 0, 0.422618, 0, 0.906308, 26.2, 0.2, 39)
+trash_name = "Ржавая металлическая канистра"
+reward_rubles = 10
+
+[node name="Box_3" parent="TrashObjects" instance=ExtResource("6_trash")]
+transform = Transform3D(0.707107, 0, 0.707107, 0, 1, 0, -0.707107, 0, 0.707107, 22.8, 0.2, 43.5)
+trash_name = "Разбитая тара от реактивов"
+reward_rubles = 4
+
+[node name="Box_4" parent="TrashObjects" instance=ExtResource("6_trash")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 27, 0.2, 44)
+trash_name = "Советский картонный архив"
+reward_rubles = 8
+
+[node name="DirtPatches" type="Node3D" parent="."]
+
+[node name="DirtPatchRoad_1" parent="DirtPatches" instance=ExtResource("7_dirt")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24.5, 0.02, 42.5)
+grid_width = 4
+grid_height = 3
+spacing = 0.3
+is_wall_mounted = false
+base_color = Color(0.2, 0.28, 0.16, 1)
+
+[node name="DirtPatchRoad_2" parent="DirtPatches" instance=ExtResource("7_dirt")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 25.8, 0.02, 39.5)
+grid_width = 5
+grid_height = 4
+spacing = 0.26
+is_wall_mounted = false
+base_color = Color(0.28, 0.22, 0.16, 1)

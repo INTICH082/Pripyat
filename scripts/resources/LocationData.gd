@@ -28,5 +28,5 @@ extends Resource
 	"Магазин «Хозтовары»"
 ]
 
-@export_file("*.tscn") var scene_path: String = "res://scenes/world/TestCourtyard.tscn"
+@export_file("*.tscn") var scene_path: String = "res://scenes/world/SosnovkaVillage.tscn"
 @export var is_unlocked: bool = true
