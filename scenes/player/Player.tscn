@@ -3,6 +3,7 @@
 [ext_resource type="Script" path="res://scripts/player/PlayerController.gd" id="1_player"]
 [ext_resource type="PackedScene" path="res://assets/models/field_specialists/cleaner.gltf" id="2_cleaner"]
 [ext_resource type="Script" path="res://scripts/weapons/WeaponManager.gd" id="3_wmanager"]
+[ext_resource type="PackedScene" uid="uid://cej314odmvou1" path="res://assets/models/fps/cleaner_fps.glb" id="4_fps_model"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_p"]
 radius = 0.35
@@ -65,9 +66,9 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.28, -0.05)
 mesh = SubResource("BoxMesh_bristles")
 surface_material_override/0 = SubResource("StandardMaterial3D_bristles")
 
-[node name="WeaponMount" type="Node3D" parent="Head/Camera3D"]
+[node name="FPSViewModel" parent="Head/Camera3D" instance=ExtResource("4_fps_model")]
 
-[node name="WeaponManager" type="Node3D" parent="Head/Camera3D" node_paths=PackedStringArray("camera", "weapon_mount")]
+[node name="WeaponManager" type="Node3D" parent="Head/Camera3D" node_paths=PackedStringArray("camera", "fps_viewmodel")]
 script = ExtResource("3_wmanager")
 camera = NodePath("..")
-weapon_mount = NodePath("../WeaponMount")
+fps_viewmodel = NodePath("../FPSViewModel")

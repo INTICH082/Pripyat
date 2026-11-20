@@ -38,12 +38,20 @@ const BOB_AMP: float = 0.04
 
 func _ready() -> void:
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
-	_update_tool_display()
 	
 	if cleaner_model:
-		anim_player = cleaner_model.get_node_or_null("AnimationPlayer")
+		_setup_shadow_only(cleaner_model)
+		anim_player = cleaner_model.find_child("AnimationPlayer", true, false) as AnimationPlayer
 		if anim_player and anim_player.has_animation("Unarmed_Idle-loop"):
 			anim_player.play("Unarmed_Idle-loop")
+			
+	_update_tool_display()
+
+func _setup_shadow_only(node: Node) -> void:
+	if node is GeometryInstance3D:
+		node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY
+	for child in node.get_children():
+		_setup_shadow_only(child)
 
 func _unhandled_input(event: InputEvent) -> void:
 	# Захват мыши / выход по Esc
@@ -89,6 +97,12 @@ func _physics_process(delta: float) -> void:
 	_handle_interaction(delta)
 	_apply_head_bob(delta)
 	_update_character_animation()
+	
+	# Обновление FPS-анимации рук в зависимости от скорости ходьбы/бега
+	if weapon_manager and (current_tool == ToolMode.WEAPON or (current_tool == ToolMode.HANDS and held_trash == null)):
+		var flat_speed = Vector2(velocity.x, velocity.z).length()
+		var is_sprinting = Input.is_action_pressed("sprint") and flat_speed > 5.0
+		weapon_manager.update_movement_animation(flat_speed, is_sprinting)
 
 func _update_character_animation() -> void:
 	if not anim_player:
@@ -172,6 +186,11 @@ func _handle_interaction(delta: float) -> void:
 				_pickup_trash(trash)
 		elif collider is TrashBin:
 			current_prompt = "Контейнер для отходов Припяти"
+		else:
+			current_prompt = "[ЛКМ] Удар кулаком  |  [E] Взять мусор"
+			if Input.is_action_just_pressed("primary_action"):
+				if weapon_manager:
+					weapon_manager.primary_attack()
 
 	# 3. Если в руках инструмент (Режим BRUSH / Щетка)
 	elif current_tool == ToolMode.BRUSH:
@@ -198,8 +217,12 @@ func _handle_interaction(delta: float) -> void:
 			else:
 				current_prompt = "[ЛКМ] Огонь [%d / %d]  |  [R] Перезарядка  |  [[ / ]] Смена" % [mag, res]
 				
-			if Input.is_action_pressed("primary_action"):
-				weapon_manager.primary_attack()
+			if w.fire_rate > 300 or w.is_flamethrower:
+				if Input.is_action_pressed("primary_action"):
+					weapon_manager.primary_attack()
+			else:
+				if Input.is_action_just_pressed("primary_action"):
+					weapon_manager.primary_attack()
 
 func _find_dirt_spot(node: Node) -> DirtSpot:
 	if node is DirtSpot:
@@ -211,12 +234,16 @@ func _find_dirt_spot(node: Node) -> DirtSpot:
 func _pickup_trash(trash: CarryableTrash) -> void:
 	held_trash = trash
 	trash.pickup(hold_socket)
+	if weapon_manager:
+		weapon_manager.set_viewmodel_visible(false)
 
 func _drop_held_trash(impulse_dir: Vector3) -> void:
 	if held_trash:
 		var trash = held_trash
 		held_trash = null
 		trash.drop(impulse_dir)
+		if current_tool == ToolMode.HANDS and weapon_manager:
+			weapon_manager.set_tool_mode_hands(true)
 
 func _set_tool(mode: ToolMode) -> void:
 	if held_trash != null:
@@ -236,19 +263,21 @@ func _update_tool_display() -> void:
 	var mode_name = ""
 	match current_tool:
 		ToolMode.HANDS:
-			mode_name = "Руки (перенос мусора)"
+			mode_name = "Руки (перенос мусора / кулачный бой)"
 			if tool_model: tool_model.visible = false
-			if weapon_manager and weapon_manager.weapon_mount: weapon_manager.weapon_mount.visible = false
+			if weapon_manager:
+				weapon_manager.set_tool_mode_hands(held_trash == null)
 		ToolMode.BRUSH:
 			mode_name = "Щётка / Скребок (очистка поверхностей)"
 			if tool_model: tool_model.visible = true
-			if weapon_manager and weapon_manager.weapon_mount: weapon_manager.weapon_mount.visible = false
+			if weapon_manager:
+				weapon_manager.set_tool_mode_brush()
 		ToolMode.WEAPON:
 			var w_name = weapon_manager.current_weapon.display_name if (weapon_manager and weapon_manager.current_weapon) else "Оружие"
 			mode_name = "Оружие: %s" % w_name
 			if tool_model: tool_model.visible = false
-			if weapon_manager and weapon_manager.weapon_mount: weapon_manager.weapon_mount.visible = true
-			if weapon_manager: weapon_manager._notify_hud()
+			if weapon_manager:
+				weapon_manager.set_tool_mode_weapon()
 			
 	EventBus.tool_changed.emit(current_tool, mode_name)
 

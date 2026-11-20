@@ -2,14 +2,15 @@ class_name WeaponManager
 extends Node3D
 
 ## Менеджер арсенала ликвидатора (13 видов оружия).
-## Управляет переключением, боезапасом, стрельбой, ударами ближнего боя,
-## огнемётом и взрывными эффектами гранатомета.
+## Управляет FPS-ригом (cleaner_fps.glb), боезапасом, стрельбой,
+## отдачей, процедурными и ключевыми анимациями первого лица.
 
 @export var camera: Camera3D
-@export var weapon_mount: Node3D
+@export var fps_viewmodel: Node3D
 
 var weapons: Array[WeaponData] = []
 var current_index: int = 0
+var last_weapon_index: int = 1
 var current_weapon: WeaponData = null
 
 # Боезапас
@@ -27,12 +28,61 @@ var ammo_reserves: Dictionary = {
 
 var can_fire: bool = true
 var is_reloading: bool = false
-var current_model_instance: Node3D = null
+var is_attacking: bool = false
+
+# FPS-компоненты
+var fps_anim_player: AnimationPlayer = null
+var weapon_mesh_nodes: Dictionary = {}
+var magazine_nodes: Dictionary = {}
+var muzzle_fx_node: Node3D = null
+
+# Анимации ударов кулаками
+var fist_strike_index: int = 0
+const FIST_ANIMS: Array[String] = ["01_fists_Jab", "01_fists_Cross", "01_fists_Strike"]
 
 func _ready() -> void:
+	_init_fps_viewmodel()
 	_load_weapon_resources()
 	if weapons.size() > 0:
 		_equip_weapon(0)
+
+func _init_fps_viewmodel() -> void:
+	if not fps_viewmodel:
+		return
+		
+	# Отключаем тени у FPS-рук, чтобы тень отбрасывало только тело CleanerModel
+	_set_shadows_off(fps_viewmodel)
+	
+	fps_anim_player = fps_viewmodel.find_child("AnimationPlayer", true, false) as AnimationPlayer
+	if fps_anim_player:
+		fps_anim_player.animation_finished.connect(_on_animation_finished)
+		
+	# Кэшируем узлы мешей оружия
+	var weapon_ids = [
+		"02_crowbar", "03_spade", "04_fire_axe",
+		"05_pistol_pl", "06_pistol_pt", "07_rifle_al", "08_rifle_at",
+		"09_rifle_vl", "10_rifle_vt", "11_rpk", "12_flamya_1", "13_launcher_gm"
+	]
+	for wid in weapon_ids:
+		var node = fps_viewmodel.find_child(wid, true, false)
+		if node and node is Node3D:
+			weapon_mesh_nodes[wid] = node
+			
+	var mag5 = fps_viewmodel.find_child("Magazine_5", true, false)
+	if mag5 and mag5 is Node3D: magazine_nodes["05_pistol_pl"] = mag5
+	
+	var mag6 = fps_viewmodel.find_child("Magazine_6", true, false)
+	if mag6 and mag6 is Node3D: magazine_nodes["06_pistol_pt"] = mag6
+	
+	muzzle_fx_node = fps_viewmodel.find_child("Muzzle_FX", true, false) as Node3D
+	if muzzle_fx_node:
+		muzzle_fx_node.visible = false
+
+func _set_shadows_off(node: Node) -> void:
+	if node is GeometryInstance3D:
+		node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	for child in node.get_children():
+		_set_shadows_off(child)
 
 func _load_weapon_resources() -> void:
 	var files = [
@@ -56,35 +106,93 @@ func _equip_weapon(index: int) -> void:
 		
 	current_index = index
 	current_weapon = weapons[current_index]
+	if current_index > 0:
+		last_weapon_index = current_index
+		
 	is_reloading = false
+	is_attacking = false
 	can_fire = true
 	
-	_spawn_weapon_model()
+	_update_weapon_mesh_visibility()
+	_play_fps_anim(current_weapon.id + "_Idle-loop", 0.1)
 	_notify_hud()
 
-func _spawn_weapon_model() -> void:
-	if current_model_instance:
-		current_model_instance.queue_free()
-		current_model_instance = null
+func equip_fists() -> void:
+	if weapons.size() > 0:
+		_equip_weapon(0)
+
+func restore_current_weapon() -> void:
+	if current_index == 0:
+		var target_idx = last_weapon_index if last_weapon_index < weapons.size() else 1
+		_equip_weapon(target_idx)
+	else:
+		_equip_weapon(current_index)
+
+func set_tool_mode_hands(is_free_hands: bool) -> void:
+	set_viewmodel_visible(is_free_hands)
+	if is_free_hands:
+		equip_fists()
+
+func set_tool_mode_brush() -> void:
+	set_viewmodel_visible(false)
+
+func set_tool_mode_weapon() -> void:
+	set_viewmodel_visible(true)
+	restore_current_weapon()
+
+func set_viewmodel_visible(is_vis: bool) -> void:
+	if fps_viewmodel:
+		fps_viewmodel.visible = is_vis
+
+func _update_weapon_mesh_visibility() -> void:
+	if not current_weapon:
+		return
+	var active_id = current_weapon.id
+	
+	# Показываем только меш выбранного оружия
+	for wid in weapon_mesh_nodes:
+		var m_node: Node3D = weapon_mesh_nodes[wid]
+		m_node.visible = (wid == active_id)
 		
-	if not current_weapon or not weapon_mount:
+	if magazine_nodes.has("05_pistol_pl"):
+		magazine_nodes["05_pistol_pl"].visible = (active_id == "05_pistol_pl")
+	if magazine_nodes.has("06_pistol_pt"):
+		magazine_nodes["06_pistol_pt"].visible = (active_id == "06_pistol_pt")
+
+func _play_fps_anim(anim_name: String, blend_time: float = 0.15) -> void:
+	if not fps_anim_player:
+		return
+	if fps_anim_player.has_animation(anim_name):
+		if fps_anim_player.current_animation != anim_name:
+			fps_anim_player.play(anim_name, blend_time)
+
+func update_movement_animation(flat_speed: float, is_sprinting: bool) -> void:
+	if is_attacking or is_reloading or not current_weapon or not fps_anim_player:
 		return
 		
-	if ResourceLoader.exists(current_weapon.model_path):
-		var scene = ResourceLoader.load(current_weapon.model_path)
-		if scene is PackedScene:
-			current_model_instance = scene.instantiate() as Node3D
-			weapon_mount.add_child(current_model_instance)
-			
-			# Начальное смещение модели оружия для правильного вида от 1-го лица
-			current_model_instance.position = Vector3(0.24, -0.25, -0.45)
-			current_model_instance.rotation_degrees = Vector3(0, 180, 0)
-			
-			# Анимация доставания (смещение снизу вверх)
-			var start_y = current_model_instance.position.y - 0.2
-			current_model_instance.position.y = start_y
-			var tween = create_tween()
-			tween.tween_property(current_model_instance, "position:y", -0.25, 0.15)
+	var wid = current_weapon.id
+	if flat_speed > 5.0 and is_sprinting:
+		_play_fps_anim(wid + "_Run-loop", 0.2)
+	elif flat_speed > 0.2:
+		_play_fps_anim(wid + "_Walk-loop", 0.2)
+	else:
+		_play_fps_anim(wid + "_Idle-loop", 0.2)
+
+func _return_to_movement_anim() -> void:
+	if not current_weapon:
+		return
+	var wid = current_weapon.id
+	_play_fps_anim(wid + "_Idle-loop", 0.15)
+
+func _on_animation_finished(anim_name: String) -> void:
+	if is_reloading and anim_name.ends_with("_Reload"):
+		_finish_reload()
+		is_reloading = false
+		can_fire = true
+		_return_to_movement_anim()
+	elif is_attacking:
+		is_attacking = false
+		_return_to_movement_anim()
 
 func _notify_hud() -> void:
 	if not current_weapon:
@@ -97,13 +205,18 @@ func _notify_hud() -> void:
 func next_weapon() -> void:
 	if weapons.size() <= 1:
 		return
-	var next_idx = (current_index + 1) % weapons.size()
+	# Переключаемся только между боевым оружием (1..12), 0 оставляем для кулаков
+	var next_idx = current_index + 1
+	if next_idx >= weapons.size():
+		next_idx = 1
 	_equip_weapon(next_idx)
 
 func prev_weapon() -> void:
 	if weapons.size() <= 1:
 		return
-	var prev_idx = (current_index - 1 + weapons.size()) % weapons.size()
+	var prev_idx = current_index - 1
+	if prev_idx < 1:
+		prev_idx = weapons.size() - 1
 	_equip_weapon(prev_idx)
 
 func primary_attack() -> void:
@@ -121,9 +234,16 @@ func primary_attack() -> void:
 
 func _perform_melee_attack() -> void:
 	can_fire = false
+	is_attacking = true
+	var wid = current_weapon.id
 	var delay = 60.0 / max(1.0, current_weapon.fire_rate)
 	
-	_animate_attack_kick(Vector3(0.05, 0.05, -0.1), Vector3(-15, 10, -5), delay * 0.4)
+	var strike_anim = wid + "_Strike"
+	if wid == "01_fists":
+		strike_anim = FIST_ANIMS[fist_strike_index % FIST_ANIMS.size()]
+		fist_strike_index += 1
+		
+	_play_fps_anim(strike_anim, 0.05)
 	
 	# Raycast удара
 	var result = _raycast_attack(current_weapon.effective_range)
@@ -140,18 +260,22 @@ func _perform_firearm_attack() -> void:
 		return
 		
 	can_fire = false
+	is_attacking = true
+	var wid = current_weapon.id
 	var delay = 60.0 / max(1.0, current_weapon.fire_rate)
 	
 	if current_weapon.is_burst:
-		# Режим Абакана (отсечка по 2 патрона)
+		# Режим Абакана (отсечка по 2 патрона с темпом 1800 выстр/мин)
 		for b in range(current_weapon.burst_count):
-			if current_mags[current_weapon.id] > 0:
-				current_mags[current_weapon.id] -= 1
+			if current_mags[wid] > 0:
+				current_mags[wid] -= 1
+				_play_fps_anim(wid + "_Fire", 0.02)
 				_fire_single_shot()
 				_notify_hud()
-			await get_tree().create_timer(0.04).timeout
+			await get_tree().create_timer(0.033).timeout
 	else:
-		current_mags[current_weapon.id] -= 1
+		current_mags[wid] -= 1
+		_play_fps_anim(wid + "_Fire", 0.04)
 		_fire_single_shot()
 		_notify_hud()
 		
@@ -159,7 +283,9 @@ func _perform_firearm_attack() -> void:
 	can_fire = true
 
 func _fire_single_shot() -> void:
-	_animate_attack_kick(Vector3(0, 0.02, 0.08), Vector3(-8, 0, 0), 0.08)
+	_flash_muzzle()
+	_apply_camera_recoil()
+	
 	var result = _raycast_attack(current_weapon.effective_range)
 	if result:
 		_apply_hit(result, current_weapon.damage)
@@ -171,20 +297,21 @@ func _perform_flame_attack() -> void:
 		return
 		
 	can_fire = false
-	current_mags[current_weapon.id] -= 1
+	is_attacking = true
+	var wid = current_weapon.id
+	
+	current_mags[wid] -= 1
 	_notify_hud()
 	
-	_animate_attack_kick(Vector3(0, 0.005, 0.01), Vector3(-2, 0, 0), 0.06)
+	_play_fps_anim(wid + "_Fire", 0.05)
+	_apply_camera_recoil(0.2)
 	
-	# Огненный конус
+	# Огненная струя
 	var result = _raycast_attack(current_weapon.effective_range)
 	if result:
 		_apply_hit(result, current_weapon.damage * 0.2)
-		
-		# Огнемёт моментально выжигает сорняки и грязь!
 		if result.collider is DirtSpot:
-			var spot = result.collider as DirtSpot
-			spot.scrub(0.5)
+			(result.collider as DirtSpot).scrub(0.5)
 			
 	await get_tree().create_timer(0.08).timeout
 	can_fire = true
@@ -196,12 +323,17 @@ func _perform_explosive_attack() -> void:
 		return
 		
 	can_fire = false
-	current_mags[current_weapon.id] -= 1
+	is_attacking = true
+	var wid = current_weapon.id
+	
+	current_mags[wid] -= 1
 	_notify_hud()
 	
-	var delay = 60.0 / max(1.0, current_weapon.fire_rate)
-	_animate_attack_kick(Vector3(0, 0.06, 0.18), Vector3(-20, 0, 0), 0.15)
+	_play_fps_anim(wid + "_Fire", 0.05)
+	_flash_muzzle()
+	_apply_camera_recoil(1.5)
 	
+	var delay = 60.0 / max(1.0, current_weapon.fire_rate)
 	var result = _raycast_attack(current_weapon.effective_range)
 	if result:
 		_create_explosion(result.position)
@@ -213,7 +345,6 @@ func _create_explosion(hit_center: Vector3) -> void:
 	var radius = current_weapon.splash_radius
 	var dmg = current_weapon.damage
 	
-	# Поиск тел в радиусе взрыва
 	var space_state = get_world_3d().direct_space_state
 	var shape = SphereShape3D.new()
 	shape.radius = radius
@@ -266,10 +397,11 @@ func _apply_hit(ray_result: Dictionary, damage_amount: float) -> void:
 		(col as DirtSpot).scrub(0.3)
 
 func reload() -> void:
-	if is_reloading or current_weapon.is_melee:
+	if is_reloading or not current_weapon or current_weapon.is_melee:
 		return
 		
-	var needed = current_weapon.mag_capacity - current_mags.get(current_weapon.id, 0)
+	var wid = current_weapon.id
+	var needed = current_weapon.mag_capacity - current_mags.get(wid, 0)
 	var reserve = ammo_reserves.get(current_weapon.ammo_type, 0)
 	
 	if needed <= 0 or reserve <= 0:
@@ -278,30 +410,37 @@ func reload() -> void:
 	is_reloading = true
 	can_fire = false
 	
-	# Анимация ухода оружия вниз во время перезарядки
-	if current_model_instance:
-		var tween = create_tween()
-		tween.tween_property(current_model_instance, "position:y", -0.5, current_weapon.reload_time * 0.4)
-		tween.tween_property(current_model_instance, "position:y", -0.25, current_weapon.reload_time * 0.6)
-		
-	await get_tree().create_timer(current_weapon.reload_time).timeout
+	var reload_anim = wid + "_Reload"
+	if fps_anim_player and fps_anim_player.has_animation(reload_anim):
+		_play_fps_anim(reload_anim, 0.1)
+	else:
+		await get_tree().create_timer(current_weapon.reload_time).timeout
+		_finish_reload()
+		is_reloading = false
+		can_fire = true
+		_return_to_movement_anim()
+
+func _finish_reload() -> void:
+	if not current_weapon:
+		return
+	var wid = current_weapon.id
+	var needed = current_weapon.mag_capacity - current_mags.get(wid, 0)
+	var reserve = ammo_reserves.get(current_weapon.ammo_type, 0)
 	
 	var to_load = mini(needed, reserve)
-	current_mags[current_weapon.id] += to_load
+	current_mags[wid] += to_load
 	ammo_reserves[current_weapon.ammo_type] -= to_load
-	
-	is_reloading = false
-	can_fire = true
 	_notify_hud()
 
-func _animate_attack_kick(recoil_pos: Vector3, recoil_rot: Vector3, return_time: float) -> void:
-	if not current_model_instance:
+func _flash_muzzle() -> void:
+	if muzzle_fx_node:
+		muzzle_fx_node.visible = true
+		var t = create_tween()
+		t.tween_interval(0.04)
+		t.tween_callback(func(): if muzzle_fx_node: muzzle_fx_node.visible = false)
+
+func _apply_camera_recoil(mult: float = 1.0) -> void:
+	if not camera or not current_weapon:
 		return
-	var base_pos = Vector3(0.24, -0.25, -0.45)
-	var base_rot = Vector3(0, 180, 0)
-	
-	var tween = create_tween()
-	tween.tween_property(current_model_instance, "position", base_pos + recoil_pos, 0.04)
-	tween.parallel().tween_property(current_model_instance, "rotation_degrees", base_rot + recoil_rot, 0.04)
-	tween.tween_property(current_model_instance, "position", base_pos, return_time)
-	tween.parallel().tween_property(current_model_instance, "rotation_degrees", base_rot, return_time)
+	var kick = deg_to_rad(current_weapon.recoil * 0.2 * mult)
+	camera.rotation.x = clamp(camera.rotation.x + kick, deg_to_rad(-85.0), deg_to_rad(85.0))
