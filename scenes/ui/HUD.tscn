@@ -267,4 +267,5 @@ theme_override_font_sizes/font_size = 13
 text = "[1-3] Режим | [Shift] Бег | [Пробел] Прыжок | [Ctrl/C] Присед | [Tab] Смена бойца | [ЛКМ] Атака | [R] Зарядка"
 
 [node name="CharacterSelectScreen" parent="." instance=ExtResource("2_cselect")]
+visible = false
 layout_mode = 1

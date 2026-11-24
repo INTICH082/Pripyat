@@ -136,5 +136,5 @@ func _execute_deposit() -> void:
 	EventBus.trash_deposited.emit(trash_name, reward_rubles)
 	
 	var tween = create_tween()
-	tween.tween_property(self, "scale", Vector3.ZERO, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+	tween.tween_property(self, "scale", Vector3(0.001, 0.001, 0.001), 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
 	tween.tween_callback(queue_free)

@@ -48,6 +48,5 @@ func clear_spot(trigger_events: bool = true) -> void:
 	
 	# Плавное схлопывание
 	var tween = create_tween()
-	tween.tween_property(self, "scale", Vector3.ZERO, 0.1)
-	tween.tween_callback(queue_free)
+	tween.tween_property(self, "scale", Vector3(0.001, 0.001, 0.001), 0.1)
 	tween.tween_callback(queue_free)

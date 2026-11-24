@@ -16,8 +16,13 @@ var model_pivots: Array[Node3D] = []
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	visible = true
-	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+	
+	# Если экран открыт внутри игрового HUD, скрываем его по умолчанию
+	if get_parent() != null and (get_parent() is CanvasLayer or get_parent().name == "HUD" or get_parent().name.ends_with("HUD")):
+		visible = false
+	else:
+		visible = true
+		Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 	
 	if cleaner_model_pivot: model_pivots.append(cleaner_model_pivot)
 	if soldier_model_pivot: model_pivots.append(soldier_model_pivot)

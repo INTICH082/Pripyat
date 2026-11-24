@@ -167,18 +167,18 @@ func _update_squad_display() -> void:
 		var is_me = (pid == my_id)
 		
 		var row = HBoxContainer.new()
-		row.theme_override_constants.set("separation", 6)
+		row.add_theme_constant_override("separation", 6)
 		
 		var bullet = Label.new()
 		bullet.text = "●"
 		bullet.modulate = _get_squad_class_color(c_id)
-		bullet.theme_override_font_sizes.set("font_size", 12)
+		bullet.add_theme_font_size_override("font_size", 12)
 		row.add_child(bullet)
 		
 		var lbl = Label.new()
 		var you_tag = " (Вы)" if is_me else ""
 		lbl.text = "%s [%s]%s" % [p_name, _get_short_class_name(c_id), you_tag]
-		lbl.theme_override_font_sizes.set("font_size", 12)
+		lbl.add_theme_font_size_override("font_size", 12)
 		lbl.modulate = Color(0.9, 0.95, 0.9) if is_me else Color(0.75, 0.8, 0.75)
 		row.add_child(lbl)
 		

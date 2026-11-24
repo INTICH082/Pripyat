@@ -21,8 +21,9 @@ extends Control
 @onready var status_label: Label = $MarginContainer/ConnectionView/VBox/StatusLabel
 
 # Браузер серверов
+@onready var scroll_container: ScrollContainer = $MarginContainer/ConnectionView/VBox/TabContainer/BrowserTab/VBox/Scroll
 @onready var lobbies_list_container: VBoxContainer = $MarginContainer/ConnectionView/VBox/TabContainer/BrowserTab/VBox/Scroll/LobbiesList
-@onready var no_lobbies_label: Label = $MarginContainer/ConnectionView/VBox/TabContainer/BrowserTab/VBox/Scroll/NoLobbiesLabel
+@onready var no_lobbies_label: Label = $MarginContainer/ConnectionView/VBox/TabContainer/BrowserTab/VBox/NoLobbiesLabel
 
 # Поля экрана комнаты лобби
 @onready var room_info_label: Label = $MarginContainer/LobbyRoomView/VBox/Header/RoomInfoLabel
@@ -141,9 +142,11 @@ func _on_lobbies_discovered_updated(lobbies: Array) -> void:
 		
 	if lobbies.size() == 0:
 		if no_lobbies_label: no_lobbies_label.visible = true
+		if scroll_container: scroll_container.visible = false
 		return
 		
 	if no_lobbies_label: no_lobbies_label.visible = false
+	if scroll_container: scroll_container.visible = true
 	
 	for lobby in lobbies:
 		var row = _create_lobby_row(lobby)

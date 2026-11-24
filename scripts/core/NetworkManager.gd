@@ -37,6 +37,7 @@ var upnp_active: bool = false
 var upnp_status_text: String = "UPnP не активен"
 var upnp_obj: UPNP = null
 var upnp_thread: Thread = null
+var upnp_mutex: Mutex = Mutex.new()
 
 # LAN / VPN обнаружение
 var lan_broadcaster: PacketPeerUDP = null
@@ -174,8 +175,12 @@ func _detect_external_ip_async() -> void:
 # ==============================================================================
 
 func start_upnp_async(port: int) -> void:
-	if upnp_thread and upnp_thread.is_alive():
-		return
+	if upnp_thread:
+		if upnp_thread.is_alive():
+			return
+		if upnp_thread.is_started():
+			upnp_thread.wait_to_finish()
+		upnp_thread = null
 	upnp_thread = Thread.new()
 	upnp_thread.start(_upnp_worker.bind(port))
 
@@ -184,25 +189,29 @@ func _upnp_worker(port: int) -> void:
 	upnp_active = false
 	call_deferred("_emit_upnp_status", upnp_status_text, false)
 	
-	upnp_obj = UPNP.new()
-	var discover_err = upnp_obj.discover(2000, 2, "InternetGatewayDevice")
+	var local_upnp = UPNP.new()
+	var discover_err = local_upnp.discover(2000, 2, "InternetGatewayDevice")
 	if discover_err != UPNP.UPNP_RESULT_SUCCESS:
 		upnp_status_text = "UPnP на роутере не обнаружен. Для игры через интернет используйте Radmin VPN или Port Forwarding."
 		call_deferred("_emit_upnp_status", upnp_status_text, false)
 		return
 		
-	var gateway = upnp_obj.get_gateway()
+	var gateway = local_upnp.get_gateway()
 	if not gateway or not gateway.is_valid_gateway():
 		upnp_status_text = "Действительный шлюз UPnP не найден."
 		call_deferred("_emit_upnp_status", upnp_status_text, false)
 		return
 		
-	var err_udp = upnp_obj.add_port_mapping(port, port, "Pripyat_UDP", "UDP")
-	var err_tcp = upnp_obj.add_port_mapping(port, port, "Pripyat_TCP", "TCP")
+	var err_udp = local_upnp.add_port_mapping(port, port, "Pripyat_UDP", "UDP")
+	var err_tcp = local_upnp.add_port_mapping(port, port, "Pripyat_TCP", "TCP")
 	
 	if err_udp == UPNP.UPNP_RESULT_SUCCESS or err_tcp == UPNP.UPNP_RESULT_SUCCESS:
+		upnp_mutex.lock()
+		upnp_obj = local_upnp
 		upnp_active = true
-		var ext = upnp_obj.query_external_address()
+		upnp_mutex.unlock()
+		
+		var ext = local_upnp.query_external_address()
 		if ext != "" and ext != "0.0.0.0":
 			external_ip = ext
 			room_code = encode_room_code(external_ip, port)
@@ -221,14 +230,18 @@ func _emit_ext_ip(ip: String, code: String) -> void:
 	external_ip_detected.emit(ip, code)
 
 func cleanup_upnp(port: int) -> void:
+	if upnp_thread:
+		if upnp_thread.is_started():
+			upnp_thread.wait_to_finish()
+		upnp_thread = null
+		
+	upnp_mutex.lock()
 	if upnp_active and upnp_obj:
 		upnp_obj.delete_port_mapping(port, "UDP")
 		upnp_obj.delete_port_mapping(port, "TCP")
 		upnp_active = false
 		upnp_obj = null
-	if upnp_thread and upnp_thread.is_alive():
-		upnp_thread.wait_to_finish()
-		upnp_thread = null
+	upnp_mutex.unlock()
 
 # ==============================================================================
 # LAN / VPN ОБНАРУЖЕНИЕ (DISCOVERY)
@@ -258,6 +271,11 @@ func _poll_lan_listener() -> void:
 		var raw = lan_listener.get_packet().get_string_from_utf8()
 		var data = JSON.parse_string(raw)
 		if typeof(data) == TYPE_DICTIONARY:
+			# Игнорируем собственное лобби хоста (защита от эхо)
+			var inc_code = data.get("code", "")
+			if is_host and (sender_ip == "127.0.0.1" or sender_ip == local_ip or (inc_code != "" and inc_code == room_code)):
+				continue
+				
 			var port = data.get("port", DEFAULT_PORT)
 			var key = "%s:%d" % [sender_ip, port]
 			data["ip"] = sender_ip
@@ -473,9 +491,9 @@ func join_game(connection_target: String, port: int = DEFAULT_PORT, player_name:
 
 ## Отключение от сети
 func disconnect_game() -> void:
+	cleanup_upnp(current_port)
 	if is_host:
 		_stop_lan_broadcaster()
-		cleanup_upnp(current_port)
 		unregister_master_server()
 		
 	if multiplayer.multiplayer_peer != null:
@@ -552,6 +570,10 @@ func request_join_lobby(peer_id: int, p_name: String, p_class: String) -> void:
 	if not is_host:
 		return
 		
+	var remote_id = multiplayer.get_remote_sender_id()
+	if remote_id != 0:
+		peer_id = remote_id
+		
 	if players.size() >= MAX_PLAYERS:
 		reject_join.rpc_id(peer_id, "Лобби переполнено (максимум %d игрока)." % MAX_PLAYERS)
 		return
@@ -605,6 +627,9 @@ func set_local_class(class_id: String) -> void:
 func request_change_class(peer_id: int, class_id: String) -> void:
 	if not is_host:
 		return
+	var remote_id = multiplayer.get_remote_sender_id()
+	if remote_id != 0:
+		peer_id = remote_id
 	if players.has(peer_id):
 		players[peer_id]["class_id"] = class_id
 		sync_lobby_state.rpc(players)
@@ -625,6 +650,9 @@ func toggle_local_ready() -> void:
 func request_set_ready(peer_id: int, is_ready: bool) -> void:
 	if not is_host:
 		return
+	var remote_id = multiplayer.get_remote_sender_id()
+	if remote_id != 0:
+		peer_id = remote_id
 	if players.has(peer_id):
 		players[peer_id]["ready"] = is_ready
 		sync_lobby_state.rpc(players)
@@ -658,6 +686,9 @@ func send_chat_message(text: String) -> void:
 
 @rpc("any_peer", "call_local", "reliable")
 func broadcast_chat_message(sender_name: String, message: String) -> void:
+	var remote_id = multiplayer.get_remote_sender_id()
+	if remote_id != 0 and players.has(remote_id):
+		sender_name = players[remote_id].get("name", sender_name)
 	chat_message_received.emit(sender_name, message)
 
 # ==============================================================================
@@ -719,8 +750,11 @@ func sync_rubles_across_squad(new_rubles: int, delta: int) -> void:
 
 @rpc("any_peer", "call_local", "reliable")
 func rpc_sync_rubles(new_rubles: int, delta: int) -> void:
-	if GameState and GameState.karbovantsi != new_rubles:
-		GameState.karbovantsi = new_rubles
+	var remote_id = multiplayer.get_remote_sender_id()
+	# Разрешаем синхронизацию экономики хосту (1) или локальному вызову (0)
+	if remote_id == 0 or remote_id == 1 or is_host:
+		if GameState and GameState.karbovantsi != new_rubles:
+			GameState.karbovantsi = new_rubles
 
 func sync_cleanliness_across_squad(cleaned: int, total: int, pct: float) -> void:
 	if is_multiplayer_active():
@@ -728,7 +762,10 @@ func sync_cleanliness_across_squad(cleaned: int, total: int, pct: float) -> void
 
 @rpc("any_peer", "call_local", "reliable")
 func rpc_sync_cleanliness(cleaned: int, total: int, pct: float) -> void:
-	if GameState:
-		GameState.cleaned_items = cleaned
-		GameState.total_items = total
-	EventBus.cleanliness_updated.emit(cleaned, total, pct)
+	var remote_id = multiplayer.get_remote_sender_id()
+	# Разрешаем синхронизацию чистоты хосту (1) или локальному вызову (0)
+	if remote_id == 0 or remote_id == 1 or is_host:
+		if GameState:
+			GameState.cleaned_items = cleaned
+			GameState.total_items = total
+		EventBus.cleanliness_updated.emit(cleaned, total, pct)
