@@ -527,7 +527,7 @@ func _clear_multiplayer_signals() -> void:
 	if multiplayer.server_disconnected.is_connected(_on_server_disconnected):
 		multiplayer.server_disconnected.disconnect(_on_server_disconnected)
 
-func _on_peer_connected(peer_id: int) -> void:
+func _on_peer_connected(_peer_id: int) -> void:
 	if not is_host:
 		return
 
@@ -536,6 +536,7 @@ func _on_peer_disconnected(peer_id: int) -> void:
 		if players.has(peer_id):
 			var left_name = players[peer_id].get("name", "Игрок")
 			players.erase(peer_id)
+			player_left_lobby.emit(peer_id)
 			sync_lobby_state.rpc(players)
 			broadcast_chat_message.rpc("ШТАБ", "Ликвидатор %s покинул смену." % left_name)
 	
@@ -589,6 +590,7 @@ func request_join_lobby(peer_id: int, p_name: String, p_class: String) -> void:
 	}
 	
 	sync_lobby_state.rpc(players)
+	player_joined_lobby.emit(players[peer_id])
 	broadcast_chat_message.rpc("ШТАБ", "Ликвидатор %s прибыл на базу (Слот #%d)." % [p_name, slot + 1])
 
 @rpc("reliable")
@@ -745,27 +747,29 @@ func spawn_players(parent_container: Node, spawn_points: Array[Vector3], player_
 # ==============================================================================
 
 func sync_rubles_across_squad(new_rubles: int, delta: int) -> void:
-	if is_multiplayer_active():
+	if is_multiplayer_active() and is_host:
 		rpc_sync_rubles.rpc(new_rubles, delta)
 
-@rpc("any_peer", "call_local", "reliable")
-func rpc_sync_rubles(new_rubles: int, delta: int) -> void:
+@rpc("authority", "call_remote", "reliable")
+func rpc_sync_rubles(new_rubles: int, _delta: int) -> void:
 	var remote_id = multiplayer.get_remote_sender_id()
-	# Разрешаем синхронизацию экономики хосту (1) или локальному вызову (0)
-	if remote_id == 0 or remote_id == 1 or is_host:
+	if remote_id == 1 or is_host:
 		if GameState and GameState.karbovantsi != new_rubles:
+			GameState._is_syncing_network = true
 			GameState.karbovantsi = new_rubles
+			GameState._is_syncing_network = false
 
 func sync_cleanliness_across_squad(cleaned: int, total: int, pct: float) -> void:
-	if is_multiplayer_active():
+	if is_multiplayer_active() and is_host:
 		rpc_sync_cleanliness.rpc(cleaned, total, pct)
 
-@rpc("any_peer", "call_local", "reliable")
+@rpc("authority", "call_remote", "reliable")
 func rpc_sync_cleanliness(cleaned: int, total: int, pct: float) -> void:
 	var remote_id = multiplayer.get_remote_sender_id()
-	# Разрешаем синхронизацию чистоты хосту (1) или локальному вызову (0)
-	if remote_id == 0 or remote_id == 1 or is_host:
+	if remote_id == 1 or is_host:
 		if GameState:
+			GameState._is_syncing_network = true
 			GameState.cleaned_items = cleaned
 			GameState.total_items = total
+			GameState._is_syncing_network = false
 		EventBus.cleanliness_updated.emit(cleaned, total, pct)

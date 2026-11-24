@@ -611,7 +611,7 @@ func rpc_drop_trash(trash_path: NodePath, impulse_dir: Vector3) -> void:
 	held_trash = null
 
 @rpc("any_peer", "reliable")
-func rpc_play_attack(weapon_id: String) -> void:
+func rpc_play_attack(_weapon_id: String) -> void:
 	if not is_multiplayer_authority() and anim_player:
 		var prefix = _get_body_anim_prefix()
 		var strike_name = _resolve_anim_name(anim_player, prefix + "Strike")

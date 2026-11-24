@@ -83,14 +83,10 @@ func _on_currency_changed(new_amount: int, delta: int) -> void:
 	rubles_label.text = "%d крб." % new_amount
 	if delta > 0:
 		_flash_rubles()
-	if NetworkManager and NetworkManager.is_multiplayer_active():
-		NetworkManager.sync_rubles_across_squad(new_amount, delta)
 
 func _on_cleanliness_updated(cleaned: int, total: int, percent: float) -> void:
 	cleanliness_bar.value = percent
 	cleanliness_label.text = "Чистота двора: %.1f%%" % percent
-	if NetworkManager and NetworkManager.is_multiplayer_active():
-		NetworkManager.sync_cleanliness_across_squad(cleaned, total, percent)
 
 func _on_health_changed(cur_hp: float, max_hp: float, _delta: float) -> void:
 	if health_bar:

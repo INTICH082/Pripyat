@@ -432,11 +432,14 @@ var invert_y: bool = false
 var camera_fov: float = 70.0
 
 # Экономика (Карбованцы)
+var _is_syncing_network: bool = false
 var karbovantsi: int = 0:
 	set(value):
 		var delta = value - karbovantsi
 		karbovantsi = max(0, value)
 		EventBus.currency_changed.emit(karbovantsi, delta)
+		if NetworkManager and NetworkManager.is_multiplayer_active() and NetworkManager.is_host and not _is_syncing_network:
+			NetworkManager.sync_rubles_across_squad(karbovantsi, delta)
 
 # Обратная совместимость для вызовов
 var rubles: int:
@@ -494,7 +497,7 @@ func set_class(class_id: String) -> void:
 func take_damage(amount: float) -> void:
 	if amount <= 0.0 or health <= 0.0:
 		return
-	var prev_hp = health
+	var _prev_hp = health
 	health = maxf(0.0, health - amount)
 	EventBus.health_changed.emit(health, max_health, -amount)
 	EventBus.player_damaged.emit(amount)
@@ -604,6 +607,8 @@ func _emit_progress() -> void:
 	if total_items > 0:
 		percent = clampf((float(cleaned_items) / float(total_items)) * 100.0, 0.0, 100.0)
 	EventBus.cleanliness_updated.emit(cleaned_items, total_items, percent)
+	if NetworkManager and NetworkManager.is_multiplayer_active() and NetworkManager.is_host and not _is_syncing_network:
+		NetworkManager.sync_cleanliness_across_squad(cleaned_items, total_items, percent)
 
 # ==============================================================================
 # НАСТРОЙКИ
