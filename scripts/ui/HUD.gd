@@ -3,11 +3,14 @@ extends Control
 
 ## Интерфейс ликвидатора в советском индустриальном стиле.
 ## Отображает кошелек (крб.), чистоту двора, шкалы здоровья, радиации, выносливости,
-## текущий класс специалиста, прицел и подсказки.
+## текущий класс специалиста, прицел, подсказки и состав отряда (до 4 игроков).
 
 @onready var rubles_label: Label = $TopLeft/VBox/HBoxRubles/RublesValue
 @onready var cleanliness_bar: ProgressBar = $TopLeft/VBox/CleanlinessBar
 @onready var cleanliness_label: Label = $TopLeft/VBox/CleanlinessBar/CleanlinessLabel
+
+@onready var squad_container: VBoxContainer = get_node_or_null("TopLeft/VBox/SquadContainer")
+@onready var squad_list: VBoxContainer = get_node_or_null("TopLeft/VBox/SquadContainer/SquadMembersList")
 
 @onready var class_badge_label: Label = $TopRight/VBox/ClassBadgeLabel
 @onready var health_bar: ProgressBar = $TopRight/VBox/HealthBar
@@ -34,6 +37,9 @@ func _ready() -> void:
 	EventBus.radiation_changed.connect(_on_radiation_changed)
 	EventBus.character_class_changed.connect(_on_character_class_changed)
 	
+	if NetworkManager:
+		NetworkManager.lobby_updated.connect(_on_squad_updated)
+		
 	# Начальные значения
 	rubles_label.text = "%d крб." % GameState.karbovantsi
 	cleanliness_bar.value = 0.0
@@ -45,10 +51,22 @@ func _ready() -> void:
 		_on_radiation_changed(GameState.radiation, GameState.max_radiation, 0.0)
 		if GameState.CLASS_DEFINITIONS.has(GameState.current_class_id):
 			_on_character_class_changed(GameState.current_class_id, GameState.CLASS_DEFINITIONS[GameState.current_class_id])
+			
+	_update_squad_display()
+
+func _find_local_player() -> PlayerController:
+	if NetworkManager:
+		var p = NetworkManager.get_local_player_node()
+		if p: return p
+	for node in get_tree().get_nodes_in_group("player"):
+		var pc = node as PlayerController
+		if pc and pc.is_multiplayer_authority():
+			return pc
+	return null
 
 func _process(_delta: float) -> void:
-	if not player:
-		player = get_tree().get_first_node_in_group("player")
+	if not player or not is_instance_valid(player):
+		player = _find_local_player()
 	
 	if player:
 		prompt_label.text = player.current_prompt
@@ -65,10 +83,14 @@ func _on_currency_changed(new_amount: int, delta: int) -> void:
 	rubles_label.text = "%d крб." % new_amount
 	if delta > 0:
 		_flash_rubles()
+	if NetworkManager and NetworkManager.is_multiplayer_active():
+		NetworkManager.sync_rubles_across_squad(new_amount, delta)
 
-func _on_cleanliness_updated(_cleaned: int, _total: int, percent: float) -> void:
+func _on_cleanliness_updated(cleaned: int, total: int, percent: float) -> void:
 	cleanliness_bar.value = percent
 	cleanliness_label.text = "Чистота двора: %.1f%%" % percent
+	if NetworkManager and NetworkManager.is_multiplayer_active():
+		NetworkManager.sync_cleanliness_across_squad(cleaned, total, percent)
 
 func _on_health_changed(cur_hp: float, max_hp: float, _delta: float) -> void:
 	if health_bar:
@@ -94,6 +116,7 @@ func _on_radiation_changed(cur_rad: float, max_rad: float, _delta: float) -> voi
 func _on_character_class_changed(_class_id: String, class_data: Dictionary) -> void:
 	if class_badge_label:
 		class_badge_label.text = "СПЕЦИАЛИСТ: [ %s ]" % class_data.get("name", "Чистильщик").to_upper()
+	_update_squad_display()
 
 func _on_tool_changed(_mode: int, tool_name: String) -> void:
 	tool_label.text = "Инструмент: [ %s ]" % tool_name
@@ -115,3 +138,64 @@ func _flash_rubles() -> void:
 	var tween = create_tween()
 	rubles_label.modulate = Color(1.0, 0.9, 0.2)
 	tween.tween_property(rubles_label, "modulate", Color.WHITE, 0.3)
+
+# ==============================================================================
+# ОТОБРАЖЕНИЕ СОСТАВА ОТРЯДА (ДО 4 БОЙЦОВ)
+# ==============================================================================
+
+func _on_squad_updated(_players: Dictionary) -> void:
+	_update_squad_display()
+
+func _update_squad_display() -> void:
+	if not squad_container or not squad_list:
+		return
+		
+	for child in squad_list.get_children():
+		child.queue_free()
+		
+	if not NetworkManager or not NetworkManager.is_multiplayer_active() or NetworkManager.players.size() <= 1:
+		squad_container.visible = false
+		return
+		
+	squad_container.visible = true
+	var my_id = multiplayer.get_unique_id() if NetworkManager.is_multiplayer_active() else 1
+	
+	for pid in NetworkManager.players:
+		var p_data = NetworkManager.players[pid]
+		var p_name = p_data.get("name", "Боец")
+		var c_id = p_data.get("class_id", "cleaner")
+		var is_me = (pid == my_id)
+		
+		var row = HBoxContainer.new()
+		row.theme_override_constants.set("separation", 6)
+		
+		var bullet = Label.new()
+		bullet.text = "●"
+		bullet.modulate = _get_squad_class_color(c_id)
+		bullet.theme_override_font_sizes.set("font_size", 12)
+		row.add_child(bullet)
+		
+		var lbl = Label.new()
+		var you_tag = " (Вы)" if is_me else ""
+		lbl.text = "%s [%s]%s" % [p_name, _get_short_class_name(c_id), you_tag]
+		lbl.theme_override_font_sizes.set("font_size", 12)
+		lbl.modulate = Color(0.9, 0.95, 0.9) if is_me else Color(0.75, 0.8, 0.75)
+		row.add_child(lbl)
+		
+		squad_list.add_child(row)
+
+func _get_short_class_name(c_id: String) -> String:
+	match c_id:
+		"cleaner": return "Чистильщик"
+		"soldier": return "Штурмовик"
+		"medic": return "Медик"
+		"engineer": return "Инженер"
+	return "Боец"
+
+func _get_squad_class_color(c_id: String) -> Color:
+	match c_id:
+		"cleaner": return Color(0.4, 0.9, 0.6)
+		"soldier": return Color(0.95, 0.45, 0.35)
+		"medic": return Color(0.35, 0.85, 1.0)
+		"engineer": return Color(1.0, 0.8, 0.25)
+	return Color.WHITE

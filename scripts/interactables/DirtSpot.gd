@@ -22,7 +22,7 @@ func _ready() -> void:
 	if GameState:
 		GameState.register_cleanup_item()
 
-func scrub(delta_time: float) -> void:
+func scrub(delta_time: float, trigger_events: bool = true) -> void:
 	if is_cleared:
 		return
 		
@@ -34,18 +34,20 @@ func scrub(delta_time: float) -> void:
 		mesh_instance.scale = Vector3(ratio, ratio, ratio)
 	
 	if health <= 0.0:
-		clear_spot()
+		clear_spot(trigger_events)
 
-func clear_spot() -> void:
+func clear_spot(trigger_events: bool = true) -> void:
 	if is_cleared:
 		return
 	is_cleared = true
 	collision_layer = 0
 	collision_mask = 0
 	
-	EventBus.dirt_cleaned.emit(reward_rubles, global_position)
+	if trigger_events:
+		EventBus.dirt_cleaned.emit(reward_rubles, global_position)
 	
 	# Плавное схлопывание
 	var tween = create_tween()
 	tween.tween_property(self, "scale", Vector3.ZERO, 0.1)
+	tween.tween_callback(queue_free)
 	tween.tween_callback(queue_free)

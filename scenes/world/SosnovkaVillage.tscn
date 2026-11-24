@@ -54,8 +54,7 @@ directional_shadow_blend_splits = true
 
 [node name="SosnovkaMap" parent="." instance=ExtResource("4_map")]
 
-[node name="Player" parent="." instance=ExtResource("2_player")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 25, 0.25, 45)
+[node name="PlayersContainer" type="Node3D" parent="."]
 
 [node name="HUD" parent="." instance=ExtResource("3_hud")]
 

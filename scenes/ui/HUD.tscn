@@ -98,6 +98,20 @@ text = "Чистота двора: 0.0%"
 horizontal_alignment = 1
 vertical_alignment = 1
 
+[node name="SquadContainer" type="VBoxContainer" parent="TopLeft/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="SquadTitle" type="Label" parent="TopLeft/VBox/SquadContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.8, 0.7, 1)
+theme_override_font_sizes/font_size = 12
+text = "ОТРЯД ЛИКВИДАЦИИ:"
+
+[node name="SquadMembersList" type="VBoxContainer" parent="TopLeft/VBox/SquadContainer"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
 [node name="TopRight" type="MarginContainer" parent="."]
 layout_mode = 1
 anchors_preset = 1

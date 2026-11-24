@@ -134,7 +134,7 @@ func _setup_collision() -> void:
 	add_child(collision_shape)
 
 ## Соскабливание пятен в радиусе от точки соприкосновения
-func scrub_at_point(world_hit_pos: Vector3, scrub_delta: float, brush_radius: float = 0.35) -> bool:
+func scrub_at_point(world_hit_pos: Vector3, scrub_delta: float, brush_radius: float = 0.35, trigger_events: bool = true) -> bool:
 	if active_spots_count <= 0 or not multimesh_instance:
 		return false
 		
@@ -163,7 +163,8 @@ func scrub_at_point(world_hit_pos: Vector3, scrub_delta: float, brush_radius: fl
 				zero_t.origin = spot.local_pos
 				mm.set_instance_transform(spot.index, zero_t)
 				
-				EventBus.dirt_cleaned.emit(spot_reward, to_global(spot.local_pos))
+				if trigger_events:
+					EventBus.dirt_cleaned.emit(spot_reward, to_global(spot.local_pos))
 			else:
 				# Уменьшаем масштаб инстанса
 				var cur_scale = spot.base_scale * ratio

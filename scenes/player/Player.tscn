@@ -37,6 +37,18 @@ shape = SubResource("CapsuleShape3D_p")
 [node name="CleanerModel" parent="." instance=ExtResource("2_cleaner")]
 transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0, 0, 0)
 
+[node name="Nametag" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.15, 0)
+
+[node name="NameLabel" type="Label3D" parent="Nametag"]
+billboard = 1
+double_sided = true
+no_depth_test = true
+font_size = 20
+outline_size = 6
+outline_modulate = Color(0, 0, 0, 0.85)
+text = "Ликвидатор [Чистильщик]"
+
 [node name="Head" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.665, 0)
 

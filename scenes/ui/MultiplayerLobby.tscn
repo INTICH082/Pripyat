@@ -1,0 +1,716 @@
+[gd_scene format=3 uid="uid://mplobby001"]
+
+[ext_resource type="Script" path="res://scripts/ui/MultiplayerLobby.gd" id="1_lobby"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bg"]
+bg_color = Color(0.05, 0.07, 0.06, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+bg_color = Color(0.09, 0.12, 0.1, 0.95)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.25, 0.4, 0.3, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_card"]
+bg_color = Color(0.12, 0.15, 0.13, 0.95)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.3, 0.48, 0.36, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_normal"]
+bg_color = Color(0.16, 0.22, 0.18, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.35, 0.55, 0.4, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_hover"]
+bg_color = Color(0.22, 0.32, 0.25, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.5, 0.8, 0.55, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_pressed"]
+bg_color = Color(0.12, 0.16, 0.13, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.3, 0.5, 0.35, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_start"]
+bg_color = Color(0.7, 0.2, 0.15, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 0.45, 0.3, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[node name="MultiplayerLobby" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_lobby")
+
+[node name="Background" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_bg")
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 40
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 40
+theme_override_constants/margin_bottom = 24
+
+[node name="ConnectionView" type="Control" parent="MarginContainer"]
+layout_mode = 2
+
+[node name="VBox" type="VBoxContainer" parent="MarginContainer/ConnectionView"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 16
+
+[node name="HeaderBox" type="VBoxContainer" parent="MarginContainer/ConnectionView/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Title" type="Label" parent="MarginContainer/ConnectionView/VBox/HeaderBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.8, 0.25, 1)
+theme_override_font_sizes/font_size = 30
+text = "P.R.I.P.Y.A.T. — ОТРЯД ДЕЗАКТИВАЦИИ"
+horizontal_alignment = 1
+
+[node name="Subtitle" type="Label" parent="MarginContainer/ConnectionView/VBox/HeaderBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.65, 0.75, 0.7, 1)
+theme_override_font_sizes/font_size = 15
+text = "Сетевой кооперативный режим ликвидации аварии на ЧАЭС (до 4 игроков через интернет и LAN/VPN)"
+horizontal_alignment = 1
+
+[node name="TopRow" type="HBoxContainer" parent="MarginContainer/ConnectionView/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="NameBox" type="HBoxContainer" parent="MarginContainer/ConnectionView/VBox/TopRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="NameLabel" type="Label" parent="MarginContainer/ConnectionView/VBox/TopRow/NameBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Позывной ликвидатора:"
+
+[node name="NameInput" type="LineEdit" parent="MarginContainer/ConnectionView/VBox/TopRow/NameBox"]
+custom_minimum_size = Vector2(250, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Ликвидатор-86"
+placeholder_text = "Введите ваш позывной"
+
+[node name="SoloButton" type="Button" parent="MarginContainer/ConnectionView/VBox/TopRow"]
+custom_minimum_size = Vector2(260, 38)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.95, 0.85, 1)
+theme_override_font_sizes/font_size = 15
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "☣ ОДИНОЧНАЯ ЗАЧИСТКА (СОЛО)"
+
+[node name="TabContainer" type="TabContainer" parent="MarginContainer/ConnectionView/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+current_tab = 0
+
+[node name="BrowserTab" type="TabBar" parent="MarginContainer/ConnectionView/VBox/TabContainer"]
+layout_mode = 2
+text = "🌐 ПОИСК ЛОББИ (ИНТЕРНЕТ И LAN / VPN)"
+
+[node name="VBox" type="VBoxContainer" parent="MarginContainer/ConnectionView/VBox/TabContainer/BrowserTab"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 12
+
+[node name="TopBar" type="HBoxContainer" parent="MarginContainer/ConnectionView/VBox/TabContainer/BrowserTab/VBox"]
+layout_mode = 2
+
+[node name="Desc" type="Label" parent="MarginContainer/ConnectionView/VBox/TabContainer/BrowserTab/VBox/TopBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.7, 0.8, 0.75, 1)
+theme_override_font_sizes/font_size = 13
+text = "Автоматический поиск активных серверов в локальной сети, Radmin VPN / Hamachi и мастер-сервере:"
+
+[node name="RefreshButton" type="Button" parent="MarginContainer/ConnectionView/VBox/TabContainer/BrowserTab/VBox/TopBar"]
+custom_minimum_size = Vector2(160, 34)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+text = "🔄 ОБНОВИТЬ СПИСОК"
+
+[node name="Scroll" type="ScrollContainer" parent="MarginContainer/ConnectionView/VBox/TabContainer/BrowserTab/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="LobbiesList" type="VBoxContainer" parent="MarginContainer/ConnectionView/VBox/TabContainer/BrowserTab/VBox/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="NoLobbiesLabel" type="Label" parent="MarginContainer/ConnectionView/VBox/TabContainer/BrowserTab/VBox/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.55, 0.65, 0.6, 1)
+theme_override_font_sizes/font_size = 15
+text = "Поиск радиосигналов... Открытых лобби пока не обнаружено.
+Создайте своё лобби во вкладке «СОЗДАТЬ ЛОББИ» или подключитесь напрямую по коду комнаты."
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="DirectTab" type="TabBar" parent="MarginContainer/ConnectionView/VBox/TabContainer"]
+visible = false
+layout_mode = 2
+text = "🔗 ПРЯМОЕ ПОДКЛЮЧЕНИЕ (ПО КОДУ / IP)"
+
+[node name="VBox" type="VBoxContainer" parent="MarginContainer/ConnectionView/VBox/TabContainer/DirectTab"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -320.0
+offset_top = -140.0
+offset_right = 320.0
+offset_bottom = 140.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 16
+
+[node name="DirectDesc" type="Label" parent="MarginContainer/ConnectionView/VBox/TabContainer/DirectTab/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.85, 0.8, 1)
+theme_override_font_sizes/font_size = 15
+text = "Введите Код комнаты (ZONE-...) или IP:порт сервера друга:"
+horizontal_alignment = 1
+
+[node name="CodeHBox" type="HBoxContainer" parent="MarginContainer/ConnectionView/VBox/TabContainer/DirectTab/VBox"]
+layout_mode = 2
+
+[node name="CodeInput" type="LineEdit" parent="MarginContainer/ConnectionView/VBox/TabContainer/DirectTab/VBox/CodeHBox"]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+placeholder_text = "ZONE-XXXX-XXXX-XXXX или 95.24.120.5:7777"
+alignment = 1
+
+[node name="ConnectButton" type="Button" parent="MarginContainer/ConnectionView/VBox/TabContainer/DirectTab/VBox"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "➔ ПОДКЛЮЧИТЬСЯ К ОТРЯДУ"
+
+[node name="Hints" type="Label" parent="MarginContainer/ConnectionView/VBox/TabContainer/DirectTab/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.65, 0.6, 1)
+theme_override_font_sizes/font_size = 12
+text = "Поддерживается:
+• Код комнаты (ZONE-XXXX-XXXX-XXXX)
+• Прямой интернет-IP (например: 95.24.120.5:7777)
+• Radmin VPN / Hamachi IP (например: 26.15.80.12:7777)
+• Локальная сеть Wi-Fi (например: 192.168.1.100:7777)"
+autowrap_mode = 2
+
+[node name="HostTab" type="TabBar" parent="MarginContainer/ConnectionView/VBox/TabContainer"]
+visible = false
+layout_mode = 2
+text = "📡 СОЗДАТЬ СВОЁ ЛОББИ (ХОСТ)"
+
+[node name="VBox" type="VBoxContainer" parent="MarginContainer/ConnectionView/VBox/TabContainer/HostTab"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -300.0
+offset_top = -140.0
+offset_right = 300.0
+offset_bottom = 140.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 14
+
+[node name="TitleHBox" type="HBoxContainer" parent="MarginContainer/ConnectionView/VBox/TabContainer/HostTab/VBox"]
+layout_mode = 2
+
+[node name="TitleLabel" type="Label" parent="MarginContainer/ConnectionView/VBox/TabContainer/HostTab/VBox/TitleHBox"]
+custom_minimum_size = Vector2(140, 0)
+layout_mode = 2
+text = "Название смены: "
+
+[node name="TitleInput" type="LineEdit" parent="MarginContainer/ConnectionView/VBox/TabContainer/HostTab/VBox/TitleHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Смена в Сосновке"
+placeholder_text = "Название вашего лобби"
+
+[node name="PortHBox" type="HBoxContainer" parent="MarginContainer/ConnectionView/VBox/TabContainer/HostTab/VBox"]
+layout_mode = 2
+
+[node name="PortLabel" type="Label" parent="MarginContainer/ConnectionView/VBox/TabContainer/HostTab/VBox/PortHBox"]
+custom_minimum_size = Vector2(140, 0)
+layout_mode = 2
+text = "Порт сервера: "
+
+[node name="PortInput" type="LineEdit" parent="MarginContainer/ConnectionView/VBox/TabContainer/HostTab/VBox/PortHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "7777"
+placeholder_text = "7777"
+
+[node name="UPnPCheck" type="CheckBox" parent="MarginContainer/ConnectionView/VBox/TabContainer/HostTab/VBox"]
+layout_mode = 2
+button_pressed = true
+text = "Автоматический проброс портов (UPnP для интернета)"
+
+[node name="HostButton" type="Button" parent="MarginContainer/ConnectionView/VBox/TabContainer/HostTab/VBox"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "🚀 ОТКРЫТЬ ЛОББИ СМЕНЫ"
+
+[node name="StatusLabel" type="Label" parent="MarginContainer/ConnectionView/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.8, 0.7, 1)
+theme_override_font_sizes/font_size = 14
+text = "Сетевой комплекс готов к работе."
+horizontal_alignment = 1
+
+[node name="LobbyRoomView" type="Control" parent="MarginContainer"]
+visible = false
+layout_mode = 2
+
+[node name="VBox" type="VBoxContainer" parent="MarginContainer/LobbyRoomView"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 12
+
+[node name="Header" type="HBoxContainer" parent="MarginContainer/LobbyRoomView/VBox"]
+layout_mode = 2
+
+[node name="RoomTitle" type="Label" parent="MarginContainer/LobbyRoomView/VBox/Header"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.8, 0.25, 1)
+theme_override_font_sizes/font_size = 22
+text = "ОТРЯД ДЕЗАКТИВАЦИИ «ПРИПЯТЬ»"
+
+[node name="RoomInfoLabel" type="Label" parent="MarginContainer/LobbyRoomView/VBox/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.65, 0.85, 0.75, 1)
+theme_override_font_sizes/font_size = 14
+text = "Бойцов в отряде: 1 / 4"
+horizontal_alignment = 2
+
+[node name="NetworkDetails" type="PanelContainer" parent="MarginContainer/LobbyRoomView/VBox"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="HBox" type="HBoxContainer" parent="MarginContainer/LobbyRoomView/VBox/NetworkDetails"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="CodeTitle" type="Label" parent="MarginContainer/LobbyRoomView/VBox/NetworkDetails/HBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.85, 0.3, 1)
+theme_override_font_sizes/font_size = 14
+text = "КОД КОМНАТЫ:"
+
+[node name="CodeValueLabel" type="Label" parent="MarginContainer/LobbyRoomView/VBox/NetworkDetails/HBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 0.95, 0.6, 1)
+theme_override_font_sizes/font_size = 15
+text = "ZONE-...."
+
+[node name="VSep1" type="VSeparator" parent="MarginContainer/LobbyRoomView/VBox/NetworkDetails/HBox"]
+layout_mode = 2
+
+[node name="ExtIPTitle" type="Label" parent="MarginContainer/LobbyRoomView/VBox/NetworkDetails/HBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+text = "ИНТЕРНЕТ IP:"
+
+[node name="ExtIPValueLabel" type="Label" parent="MarginContainer/LobbyRoomView/VBox/NetworkDetails/HBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.9, 1, 1)
+theme_override_font_sizes/font_size = 13
+text = "Определение..."
+
+[node name="VSep2" type="VSeparator" parent="MarginContainer/LobbyRoomView/VBox/NetworkDetails/HBox"]
+layout_mode = 2
+
+[node name="LocalIPTitle" type="Label" parent="MarginContainer/LobbyRoomView/VBox/NetworkDetails/HBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+text = "LAN / VPN IP:"
+
+[node name="LocalIPValueLabel" type="Label" parent="MarginContainer/LobbyRoomView/VBox/NetworkDetails/HBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.8, 0.8, 1)
+theme_override_font_sizes/font_size = 13
+text = "127.0.0.1"
+
+[node name="VSep3" type="VSeparator" parent="MarginContainer/LobbyRoomView/VBox/NetworkDetails/HBox"]
+layout_mode = 2
+
+[node name="UPnPStatusLabel" type="Label" parent="MarginContainer/LobbyRoomView/VBox/NetworkDetails/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 0.8, 0.3, 1)
+theme_override_font_sizes/font_size = 12
+text = "UPnP статус..."
+horizontal_alignment = 2
+
+[node name="CopyInviteButton" type="Button" parent="MarginContainer/LobbyRoomView/VBox/NetworkDetails"]
+layout_mode = 2
+size_flags_horizontal = 8
+theme_override_font_sizes/font_size = 13
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+text = "📋 СКОПИРОВАТЬ ПРИГЛАШЕНИЕ"
+
+[node name="CardsContainer" type="HBoxContainer" parent="MarginContainer/LobbyRoomView/VBox"]
+custom_minimum_size = Vector2(0, 210)
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="SlotCard_1" type="PanelContainer" parent="MarginContainer/LobbyRoomView/VBox/CardsContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_card")
+
+[node name="VBox" type="VBoxContainer" parent="MarginContainer/LobbyRoomView/VBox/CardsContainer/SlotCard_1"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="SlotTitle" type="Label" parent="MarginContainer/LobbyRoomView/VBox/CardsContainer/SlotCard_1/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.85, 0.3, 1)
+theme_override_font_sizes/font_size = 13
+text = "СЛОТ #1 [КОМАНДИР]"
+
+[node name="PlayerName" type="Label" parent="MarginContainer/LobbyRoomView/VBox/CardsContainer/SlotCard_1/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Ликвидатор-86"
+
+[node name="PlayerClass" type="Label" parent="MarginContainer/LobbyRoomView/VBox/CardsContainer/SlotCard_1/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 0.9, 0.6, 1)
+theme_override_font_sizes/font_size = 14
+text = "[ ЧИСТИЛЬЩИК ]"
+
+[node name="ClassPerk" type="Label" parent="MarginContainer/LobbyRoomView/VBox/CardsContainer/SlotCard_1/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.7, 0.75, 0.7, 1)
+theme_override_font_sizes/font_size = 11
+text = "+75% к скорости очистки, широкое сопло скребка"
+autowrap_mode = 2
+
+[node name="ReadyBadge" type="Label" parent="MarginContainer/LobbyRoomView/VBox/CardsContainer/SlotCard_1/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.3, 1, 0.4, 1)
+theme_override_font_sizes/font_size = 12
+text = "● ГОТОВ К БОЮ"
+horizontal_alignment = 1
+
+[node name="SlotCard_2" type="PanelContainer" parent="MarginContainer/LobbyRoomView/VBox/CardsContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_card")
+
+[node name="VBox" type="VBoxContainer" parent="MarginContainer/LobbyRoomView/VBox/CardsContainer/SlotCard_2"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="SlotTitle" type="Label" parent="MarginContainer/LobbyRoomView/VBox/CardsContainer/SlotCard_2/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.85, 1, 1)
+theme_override_font_sizes/font_size = 13
+text = "СЛОТ #2"
+
+[node name="PlayerName" type="Label" parent="MarginContainer/LobbyRoomView/VBox/CardsContainer/SlotCard_2/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "[ Свободно ]"
+
+[node name="PlayerClass" type="Label" parent="MarginContainer/LobbyRoomView/VBox/CardsContainer/SlotCard_2/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "Ожидание..."
+
+[node name="ClassPerk" type="Label" parent="MarginContainer/LobbyRoomView/VBox/CardsContainer/SlotCard_2/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 11
+text = "—"
+autowrap_mode = 2
+
+[node name="ReadyBadge" type="Label" parent="MarginContainer/LobbyRoomView/VBox/CardsContainer/SlotCard_2/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "СВОБОДЕН"
+horizontal_alignment = 1
+
+[node name="SlotCard_3" type="PanelContainer" parent="MarginContainer/LobbyRoomView/VBox/CardsContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_card")
+
+[node name="VBox" type="VBoxContainer" parent="MarginContainer/LobbyRoomView/VBox/CardsContainer/SlotCard_3"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="SlotTitle" type="Label" parent="MarginContainer/LobbyRoomView/VBox/CardsContainer/SlotCard_3/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.85, 1, 1)
+theme_override_font_sizes/font_size = 13
+text = "СЛОТ #3"
+
+[node name="PlayerName" type="Label" parent="MarginContainer/LobbyRoomView/VBox/CardsContainer/SlotCard_3/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "[ Свободно ]"
+
+[node name="PlayerClass" type="Label" parent="MarginContainer/LobbyRoomView/VBox/CardsContainer/SlotCard_3/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "Ожидание..."
+
+[node name="ClassPerk" type="Label" parent="MarginContainer/LobbyRoomView/VBox/CardsContainer/SlotCard_3/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 11
+text = "—"
+autowrap_mode = 2
+
+[node name="ReadyBadge" type="Label" parent="MarginContainer/LobbyRoomView/VBox/CardsContainer/SlotCard_3/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "СВОБОДЕН"
+horizontal_alignment = 1
+
+[node name="SlotCard_4" type="PanelContainer" parent="MarginContainer/LobbyRoomView/VBox/CardsContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_card")
+
+[node name="VBox" type="VBoxContainer" parent="MarginContainer/LobbyRoomView/VBox/CardsContainer/SlotCard_4"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="SlotTitle" type="Label" parent="MarginContainer/LobbyRoomView/VBox/CardsContainer/SlotCard_4/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.85, 1, 1)
+theme_override_font_sizes/font_size = 13
+text = "СЛОТ #4"
+
+[node name="PlayerName" type="Label" parent="MarginContainer/LobbyRoomView/VBox/CardsContainer/SlotCard_4/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "[ Свободно ]"
+
+[node name="PlayerClass" type="Label" parent="MarginContainer/LobbyRoomView/VBox/CardsContainer/SlotCard_4/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "Ожидание..."
+
+[node name="ClassPerk" type="Label" parent="MarginContainer/LobbyRoomView/VBox/CardsContainer/SlotCard_4/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 11
+text = "—"
+autowrap_mode = 2
+
+[node name="ReadyBadge" type="Label" parent="MarginContainer/LobbyRoomView/VBox/CardsContainer/SlotCard_4/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "СВОБОДЕН"
+horizontal_alignment = 1
+
+[node name="ClassSelectBox" type="VBoxContainer" parent="MarginContainer/LobbyRoomView/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="ClassSelectTitle" type="Label" parent="MarginContainer/LobbyRoomView/VBox/ClassSelectBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.95, 0.9, 1)
+theme_override_font_sizes/font_size = 13
+text = "ВЫБЕРИТЕ СПЕЦИАЛИЗАЦИЮ ЛИКВИДАТОРА:"
+
+[node name="ButtonsHBox" type="HBoxContainer" parent="MarginContainer/LobbyRoomView/VBox/ClassSelectBox"]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="BtnCleaner" type="Button" parent="MarginContainer/LobbyRoomView/VBox/ClassSelectBox/ButtonsHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.4, 0.9, 0.6, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+text = "🧹 ЧИСТИЛЬЩИК"
+
+[node name="BtnSoldier" type="Button" parent="MarginContainer/LobbyRoomView/VBox/ClassSelectBox/ButtonsHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.95, 0.45, 0.35, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+text = "🪖 ШТУРМОВИК"
+
+[node name="BtnMedic" type="Button" parent="MarginContainer/LobbyRoomView/VBox/ClassSelectBox/ButtonsHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.35, 0.85, 1, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+text = "💉 МЕДИК РХБЗ"
+
+[node name="BtnEngineer" type="Button" parent="MarginContainer/LobbyRoomView/VBox/ClassSelectBox/ButtonsHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 0.8, 0.25, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+text = "🔧 ИНЖЕНЕР"
+
+[node name="ChatSection" type="VBoxContainer" parent="MarginContainer/LobbyRoomView/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="ChatLog" type="RichTextLabel" parent="MarginContainer/LobbyRoomView/VBox/ChatSection"]
+layout_mode = 2
+size_flags_vertical = 3
+bbcode_enabled = true
+scroll_following = true
+
+[node name="HBox" type="HBoxContainer" parent="MarginContainer/LobbyRoomView/VBox/ChatSection"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="ChatInput" type="LineEdit" parent="MarginContainer/LobbyRoomView/VBox/ChatSection/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Радиоканал группы... (Enter для отправки)"
+
+[node name="SendButton" type="Button" parent="MarginContainer/LobbyRoomView/VBox/ChatSection/HBox"]
+custom_minimum_size = Vector2(110, 0)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+text = "ОТПРАВИТЬ"
+
+[node name="BottomBar" type="HBoxContainer" parent="MarginContainer/LobbyRoomView/VBox"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="LeaveButton" type="Button" parent="MarginContainer/LobbyRoomView/VBox/BottomBar"]
+custom_minimum_size = Vector2(170, 0)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+text = "❌ ПОКИНУТЬ ЛОББИ"
+
+[node name="ReadyButton" type="Button" parent="MarginContainer/LobbyRoomView/VBox/BottomBar"]
+custom_minimum_size = Vector2(210, 0)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+text = "✓ ГОТОВ К ВЫСАДКЕ"
+
+[node name="StartGameButton" type="Button" parent="MarginContainer/LobbyRoomView/VBox/BottomBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 17
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_start")
+text = "🚀 НАЧАТЬ ЗАЧИСТКУ (СТАРТ)"
+
+[connection signal="pressed" from="MarginContainer/ConnectionView/VBox/TopRow/SoloButton" to="." method="_on_solo_play_pressed"]
+[connection signal="pressed" from="MarginContainer/ConnectionView/VBox/TabContainer/BrowserTab/VBox/TopBar/RefreshButton" to="." method="_on_refresh_lobbies_pressed"]
+[connection signal="pressed" from="MarginContainer/ConnectionView/VBox/TabContainer/DirectTab/VBox/ConnectButton" to="." method="_on_direct_connect_pressed"]
+[connection signal="text_submitted" from="MarginContainer/ConnectionView/VBox/TabContainer/DirectTab/VBox/CodeHBox/CodeInput" to="." method="_on_direct_connect_pressed"]
+[connection signal="pressed" from="MarginContainer/ConnectionView/VBox/TabContainer/HostTab/VBox/HostButton" to="." method="_on_host_lobby_pressed"]
+[connection signal="pressed" from="MarginContainer/LobbyRoomView/VBox/NetworkDetails/CopyInviteButton" to="." method="_on_copy_invite_pressed"]
+[connection signal="pressed" from="MarginContainer/LobbyRoomView/VBox/ClassSelectBox/ButtonsHBox/BtnCleaner" to="." method="_on_class_cleaner_pressed"]
+[connection signal="pressed" from="MarginContainer/LobbyRoomView/VBox/ClassSelectBox/ButtonsHBox/BtnSoldier" to="." method="_on_class_soldier_pressed"]
+[connection signal="pressed" from="MarginContainer/LobbyRoomView/VBox/ClassSelectBox/ButtonsHBox/BtnMedic" to="." method="_on_class_medic_pressed"]
+[connection signal="pressed" from="MarginContainer/LobbyRoomView/VBox/ClassSelectBox/ButtonsHBox/BtnEngineer" to="." method="_on_class_engineer_pressed"]
+[connection signal="text_submitted" from="MarginContainer/LobbyRoomView/VBox/ChatSection/HBox/ChatInput" to="." method="_on_chat_input_text_submitted"]
+[connection signal="pressed" from="MarginContainer/LobbyRoomView/VBox/ChatSection/HBox/SendButton" to="." method="_on_send_chat_pressed"]
+[connection signal="pressed" from="MarginContainer/LobbyRoomView/VBox/BottomBar/LeaveButton" to="." method="_on_leave_lobby_pressed"]
+[connection signal="pressed" from="MarginContainer/LobbyRoomView/VBox/BottomBar/ReadyButton" to="." method="_on_ready_button_pressed"]
+[connection signal="pressed" from="MarginContainer/LobbyRoomView/VBox/BottomBar/StartGameButton" to="." method="_on_start_game_pressed"]

@@ -3,30 +3,62 @@ extends Node3D
 
 ## Контроллер локации «Деревня Сосновка (Торговая тропа)».
 ## Отвечает за генерацию физических коллизий для геометрии карты,
-## исключая декоративную растительность, кусты, траву и спрайты щебня,
-## а также за отслеживание границ игрового мира.
+## спавн сетевого отряда до 4 ликвидаторов и защиту от выпадения за пределы мира.
+
+@export var player_scene: PackedScene = preload("res://scenes/player/Player.tscn")
 
 @export var default_spawn_position: Vector3 = Vector3(25.0, 0.25, 45.0)
+@export var spawn_points: Array[Vector3] = [
+	Vector3(25.0, 0.25, 45.0),
+	Vector3(26.8, 0.25, 43.5),
+	Vector3(23.2, 0.25, 43.5),
+	Vector3(25.0, 0.25, 42.0)
+]
 
 @onready var map_node: Node3D = $SosnovkaMap
 @onready var world_environment: WorldEnvironment = $WorldEnvironment
 @onready var sun_light: DirectionalLight3D = $DirectionalLight3D
+@onready var players_container: Node3D = get_node_or_null("PlayersContainer")
 
 func _ready() -> void:
 	if map_node:
 		_generate_environment_collisions(map_node)
 	
-	# Позиционируем игрока на точку возрождения Spawn_01, если он найден
-	var player := get_tree().get_first_node_in_group("player") as Node3D
-	if player and player.global_position.distance_squared_to(Vector3.ZERO) < 0.1:
-		player.global_position = default_spawn_position
+	# Спавним игроков через NetworkManager (одиночно или мультиплеер от 1 до 4 бойцов)
+	if not players_container:
+		players_container = Node3D.new()
+		players_container.name = "PlayersContainer"
+		add_child(players_container)
+		
+	if NetworkManager:
+		NetworkManager.spawn_players(players_container, spawn_points, player_scene)
+	else:
+		_spawn_local_fallback()
+
+func _spawn_local_fallback() -> void:
+	if not player_scene or not players_container:
+		return
+	var p = player_scene.instantiate() as PlayerController
+	p.name = "Player_1"
+	p.set_multiplayer_authority(1)
+	players_container.add_child(p)
+	p.global_position = default_spawn_position
+	p.setup_player({
+		"peer_id": 1,
+		"name": "Ликвидатор",
+		"class_id": GameState.current_class_id if GameState else "cleaner",
+		"is_host": true,
+		"slot": 0
+	})
 
 func _physics_process(_delta: float) -> void:
-	# Защита от выпадения за пределы игрового мира
-	var player := get_tree().get_first_node_in_group("player") as CharacterBody3D
-	if player and player.global_position.y < -15.0:
-		player.velocity = Vector3.ZERO
-		player.global_position = default_spawn_position
+	# Защита от выпадения за пределы игрового мира для всех активных игроков
+	if players_container:
+		for child in players_container.get_children():
+			var player = child as CharacterBody3D
+			if player and player.global_position.y < -15.0:
+				player.velocity = Vector3.ZERO
+				player.global_position = default_spawn_position
 
 ## Рекурсивно генерирует trimesh коллизии для мешей окружения
 func _generate_environment_collisions(node: Node) -> void:

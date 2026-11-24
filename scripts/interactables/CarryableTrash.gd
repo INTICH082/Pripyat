@@ -112,6 +112,18 @@ func drop(throw_impulse_dir: Vector3 = Vector3.ZERO) -> void:
 func deposit_into_bin() -> void:
 	if is_deposited:
 		return
+	if NetworkManager and NetworkManager.is_multiplayer_active():
+		rpc_deposit_into_bin.rpc()
+	else:
+		_execute_deposit()
+
+@rpc("any_peer", "call_local", "reliable")
+func rpc_deposit_into_bin() -> void:
+	_execute_deposit()
+
+func _execute_deposit() -> void:
+	if is_deposited:
+		return
 	is_deposited = true
 	is_carried = false
 	current_holder = null

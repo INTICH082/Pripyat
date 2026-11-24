@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="pripyat cleaner"
-run/main_scene="res://scenes/world/SosnovkaVillage.tscn"
+run/main_scene="res://scenes/ui/MultiplayerLobby.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
 config/icon="res://icon.svg"
 
@@ -19,15 +19,14 @@ config/icon="res://icon.svg"
 
 EventBus="*res://scripts/core/EventBus.gd"
 GameState="*res://scripts/core/GameState.gd"
+NetworkManager="*res://scripts/core/NetworkManager.gd"
 
 [display]
 
 window/size/viewport_width=1920
 window/size/viewport_height=1080
-window/size/resizable=true
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
-window/stretch/scale_mode="fractional"
 
 [physics]
 
@@ -36,8 +35,5 @@ window/stretch/scale_mode="fractional"
 [rendering]
 
 rendering_device/driver.windows="d3d12"
-scaling_3d/mode=0
-scaling_3d/scale=1.0
-textures/canvas_textures/default_texture_filter=1
 anti_aliasing/quality/msaa_3d=2
 anti_aliasing/quality/screen_space_aa=1

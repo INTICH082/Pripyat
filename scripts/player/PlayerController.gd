@@ -27,11 +27,23 @@ enum ToolMode { HANDS, BRUSH, WEAPON }
 @onready var tool_model: Node3D = $Head/Camera3D/ToolAnchor
 @onready var cleaner_model: Node3D = get_node_or_null("CleanerModel")
 @onready var weapon_manager: WeaponManager = get_node_or_null("Head/Camera3D/WeaponManager")
+@onready var nametag: Node3D = get_node_or_null("Nametag")
+@onready var name_label: Label3D = get_node_or_null("Nametag/NameLabel")
 
 var anim_player: AnimationPlayer = null
 var current_tool: ToolMode = ToolMode.WEAPON
 var held_trash: CarryableTrash = null
 var current_prompt: String = ""
+
+# Мультиплеер и сетевая идентификация
+var peer_id: int = 1
+var player_name: String = "Ликвидатор"
+var class_id: String = "cleaner"
+var target_pos: Vector3 = Vector3.ZERO
+var target_rot_y: float = 0.0
+var target_head_pitch: float = 0.0
+var target_velocity: Vector3 = Vector3.ZERO
+var target_crouch: bool = false
 
 # Параметры приседания
 var is_crouching: bool = false
@@ -46,24 +58,117 @@ const BOB_FREQ: float = 2.4
 const BOB_AMP: float = 0.035
 
 func _ready() -> void:
-	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+	target_pos = global_position
+	target_rot_y = rotation.y
+	target_head_pitch = head.rotation.x
 	
-	if camera and GameState:
-		camera.fov = GameState.camera_fov
+	var is_auth = is_multiplayer_authority()
+	
+	if is_auth:
+		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+		camera.current = true
+		if camera and GameState:
+			camera.fov = GameState.camera_fov
+		if nametag:
+			nametag.visible = false
+		if cleaner_model:
+			_setup_shadow_only(cleaner_model)
+		if weapon_manager:
+			weapon_manager.set_viewmodel_visible(true)
+	else:
+		camera.current = false
+		if nametag:
+			nametag.visible = true
+		if cleaner_model:
+			_setup_full_visibility(cleaner_model)
+		if weapon_manager:
+			weapon_manager.set_viewmodel_visible(false)
 		
 	EventBus.character_class_changed.connect(_on_character_class_changed)
 	
 	if cleaner_model:
-		_setup_shadow_only(cleaner_model)
 		anim_player = _find_animation_player(cleaner_model)
 		if anim_player:
 			var idle_name = _resolve_anim_name(anim_player, "Unarmed_Idle-loop")
 			if idle_name != "":
 				anim_player.play(idle_name)
 			
-	_update_tool_display()
+	if is_auth:
+		_update_tool_display()
 
-func _on_character_class_changed(class_id: String, class_data: Dictionary) -> void:
+func setup_player(player_info: Dictionary) -> void:
+	peer_id = player_info.get("peer_id", 1)
+	player_name = player_info.get("name", "Ликвидатор")
+	class_id = player_info.get("class_id", "cleaner")
+	
+	set_multiplayer_authority(peer_id)
+	var is_auth = is_multiplayer_authority()
+	
+	if nametag:
+		nametag.visible = not is_auth
+	if name_label:
+		name_label.text = "%s\n[%s]" % [player_name, _get_class_display_name(class_id)]
+		
+	if is_auth:
+		camera.current = true
+		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+		if weapon_manager:
+			weapon_manager.set_viewmodel_visible(true)
+		if cleaner_model:
+			_setup_shadow_only(cleaner_model)
+		if GameState:
+			GameState.set_class(class_id)
+	else:
+		camera.current = false
+		if weapon_manager:
+			weapon_manager.set_viewmodel_visible(false)
+		_apply_class_model(class_id, false)
+
+func _get_class_display_name(c_id: String) -> String:
+	match c_id:
+		"cleaner": return "Чистильщик"
+		"soldier": return "Штурмовик"
+		"medic": return "Медик"
+		"engineer": return "Инженер"
+	return "Ликвидатор"
+
+func _apply_class_model(c_id: String, shadow_only: bool) -> void:
+	class_id = c_id
+	var def = GameState.CLASS_DEFINITIONS.get(c_id, {}) if GameState else {}
+	var body_path = def.get("body_model_path", "")
+	if body_path != "" and ResourceLoader.exists(body_path):
+		if cleaner_model:
+			cleaner_model.queue_free()
+		var scene = ResourceLoader.load(body_path) as PackedScene
+		if scene:
+			var new_body = scene.instantiate() as Node3D
+			new_body.name = "CleanerModel"
+			new_body.transform = Transform3D(Basis(Vector3(0, 1, 0), deg_to_rad(180)), Vector3.ZERO)
+			add_child(new_body)
+			cleaner_model = new_body
+			if shadow_only:
+				_setup_shadow_only(cleaner_model)
+			else:
+				_setup_full_visibility(cleaner_model)
+			anim_player = _find_animation_player(cleaner_model)
+			if anim_player:
+				var idle_name = _resolve_anim_name(anim_player, "Unarmed_Idle-loop")
+				if idle_name != "":
+					anim_player.play(idle_name)
+
+func _setup_full_visibility(node: Node) -> void:
+	if not node:
+		return
+	if node is GeometryInstance3D:
+		node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		node.visible = true
+	for child in node.get_children():
+		_setup_full_visibility(child)
+
+func _on_character_class_changed(p_class_id: String, class_data: Dictionary) -> void:
+	if not is_multiplayer_authority():
+		return
+	class_id = p_class_id
 	# Смена 3D-модели тела от третьего лица
 	var body_path = class_data.get("body_model_path", "")
 	if body_path != "" and ResourceLoader.exists(body_path):
@@ -119,6 +224,9 @@ func _setup_shadow_only(node: Node) -> void:
 		_setup_shadow_only(child)
 
 func _unhandled_input(event: InputEvent) -> void:
+	if not is_multiplayer_authority():
+		return
+		
 	# Выход / захват мыши по Esc
 	if event.is_action_pressed("ui_cancel"):
 		if Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
@@ -160,15 +268,26 @@ func _unhandled_input(event: InputEvent) -> void:
 			_cycle_tool(-1)
 
 func _physics_process(delta: float) -> void:
-	_handle_movement(delta)
-	_handle_interaction(delta)
-	_apply_head_bob(delta)
-	_update_character_animation()
-	
-	if weapon_manager and (current_tool == ToolMode.WEAPON or (current_tool == ToolMode.HANDS and held_trash == null)):
-		var flat_speed = Vector2(velocity.x, velocity.z).length()
-		var is_sprinting = Input.is_action_pressed("sprint") and flat_speed > 4.0 and not is_crouching and is_on_floor()
-		weapon_manager.update_movement_animation(flat_speed, is_sprinting, is_crouching, not is_on_floor())
+	if is_multiplayer_authority():
+		_handle_movement(delta)
+		_handle_interaction(delta)
+		_apply_head_bob(delta)
+		_update_character_animation()
+		
+		if weapon_manager and (current_tool == ToolMode.WEAPON or (current_tool == ToolMode.HANDS and held_trash == null)):
+			var flat_speed = Vector2(velocity.x, velocity.z).length()
+			var is_sprinting = Input.is_action_pressed("sprint") and flat_speed > 4.0 and not is_crouching and is_on_floor()
+			weapon_manager.update_movement_animation(flat_speed, is_sprinting, is_crouching, not is_on_floor())
+			
+		if NetworkManager and NetworkManager.is_multiplayer_active():
+			sync_transform.rpc(global_position, rotation.y, head.rotation.x, velocity, is_crouching)
+	else:
+		global_position = global_position.lerp(target_pos, 18.0 * delta)
+		rotation.y = lerp_angle(rotation.y, target_rot_y, 18.0 * delta)
+		head.rotation.x = lerp_angle(head.rotation.x, target_head_pitch, 18.0 * delta)
+		velocity = target_velocity
+		is_crouching = target_crouch
+		_update_character_animation()
 
 func _get_body_anim_prefix() -> String:
 	if current_tool == ToolMode.HANDS or current_tool == ToolMode.BRUSH or not weapon_manager or not weapon_manager.current_weapon:
@@ -309,6 +428,8 @@ func _handle_interaction(delta: float) -> void:
 			if Input.is_action_just_pressed("primary_action"):
 				if weapon_manager:
 					weapon_manager.primary_attack()
+					if NetworkManager and NetworkManager.is_multiplayer_active():
+						rpc_play_attack.rpc("01_fists")
 
 	# 3. Если в руках инструмент (Режим BRUSH / Щетка)
 	elif current_tool == ToolMode.BRUSH:
@@ -323,12 +444,16 @@ func _handle_interaction(delta: float) -> void:
 				var brush_r = 0.38 * (1.5 if (GameState and GameState.current_class_id == "cleaner") else 1.0)
 				patch.scrub_at_point(hit_point, delta * clean_mod, brush_r)
 				_animate_tool_action()
+				if NetworkManager and NetworkManager.is_multiplayer_active():
+					rpc_scrub_patch.rpc(patch.get_path(), hit_point, delta * clean_mod, brush_r)
 		elif spot:
 			current_prompt = "[ЛКМ] Соскрести загрязнение"
 			if Input.is_action_pressed("primary_action"):
 				var clean_mod = GameState.cleaning_modifier if GameState else 1.0
 				spot.scrub(delta * clean_mod)
 				_animate_tool_action()
+				if NetworkManager and NetworkManager.is_multiplayer_active():
+					rpc_scrub_spot.rpc(spot.get_path(), delta * clean_mod)
 		else:
 			if collider != null:
 				current_prompt = "Направьте на грязь, мох или копоть"
@@ -349,9 +474,13 @@ func _handle_interaction(delta: float) -> void:
 			if w.fire_rate > 300 or w.is_flamethrower:
 				if Input.is_action_pressed("primary_action"):
 					weapon_manager.primary_attack()
+					if NetworkManager and NetworkManager.is_multiplayer_active():
+						rpc_play_attack.rpc(w.id)
 			else:
 				if Input.is_action_just_pressed("primary_action"):
 					weapon_manager.primary_attack()
+					if NetworkManager and NetworkManager.is_multiplayer_active():
+						rpc_play_attack.rpc(w.id)
 
 func _find_dirt_patch(node: Node) -> DirtPatch:
 	if not node:
@@ -376,6 +505,8 @@ func _pickup_trash(trash: CarryableTrash) -> void:
 	trash.pickup(hold_socket, self)
 	if weapon_manager:
 		weapon_manager.set_viewmodel_visible(false)
+	if NetworkManager and NetworkManager.is_multiplayer_active():
+		rpc_pickup_trash.rpc(trash.get_path())
 
 func _drop_held_trash(impulse_dir: Vector3) -> void:
 	if held_trash:
@@ -384,6 +515,8 @@ func _drop_held_trash(impulse_dir: Vector3) -> void:
 		trash.drop(impulse_dir)
 		if current_tool == ToolMode.HANDS and weapon_manager:
 			weapon_manager.set_tool_mode_hands(true)
+		if NetworkManager and NetworkManager.is_multiplayer_active():
+			rpc_drop_trash.rpc(trash.get_path(), impulse_dir)
 
 func _set_tool(mode: ToolMode) -> void:
 	if held_trash != null:
@@ -434,3 +567,53 @@ func _apply_head_bob(delta: float) -> void:
 		bob_time = 0.0
 		camera.position.y = move_toward(camera.position.y, 0.0, delta * 0.2)
 		camera.position.x = move_toward(camera.position.x, 0.0, delta * 0.2)
+
+# ==============================================================================
+# СЕТЕВЫЕ RPC-МЕТОДЫ СИНХРОНИЗАЦИИ
+# ==============================================================================
+
+@rpc("unreliable")
+func sync_transform(pos: Vector3, rot_y: float, head_pitch: float, vel: Vector3, crouch: bool) -> void:
+	target_pos = pos
+	target_rot_y = rot_y
+	target_head_pitch = head_pitch
+	target_velocity = vel
+	target_crouch = crouch
+
+@rpc("any_peer", "unreliable")
+func rpc_scrub_patch(patch_path: NodePath, hit_point: Vector3, scrub_amt: float, brush_r: float) -> void:
+	var patch = get_node_or_null(patch_path) as DirtPatch
+	if patch:
+		patch.scrub_at_point(hit_point, scrub_amt, brush_r, false)
+
+@rpc("any_peer", "unreliable")
+func rpc_scrub_spot(spot_path: NodePath, scrub_amt: float) -> void:
+	var spot = get_node_or_null(spot_path) as DirtSpot
+	if spot:
+		spot.scrub(scrub_amt, false)
+
+@rpc("any_peer", "call_local", "reliable")
+func rpc_pickup_trash(trash_path: NodePath) -> void:
+	if is_multiplayer_authority():
+		return
+	var trash = get_node_or_null(trash_path) as CarryableTrash
+	if trash:
+		held_trash = trash
+		trash.pickup(hold_socket, self)
+
+@rpc("any_peer", "call_local", "reliable")
+func rpc_drop_trash(trash_path: NodePath, impulse_dir: Vector3) -> void:
+	if is_multiplayer_authority():
+		return
+	var trash = get_node_or_null(trash_path) as CarryableTrash
+	if trash:
+		trash.drop(impulse_dir)
+	held_trash = null
+
+@rpc("any_peer", "reliable")
+func rpc_play_attack(weapon_id: String) -> void:
+	if not is_multiplayer_authority() and anim_player:
+		var prefix = _get_body_anim_prefix()
+		var strike_name = _resolve_anim_name(anim_player, prefix + "Strike")
+		if strike_name != "":
+			anim_player.play(strike_name, 0.1)
