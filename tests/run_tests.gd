@@ -43,6 +43,7 @@ func _run_all_test_suites() -> void:
 	suite_interactables_logic()
 	suite_scene_hierarchy_integrity()
 	suite_multiplayer_discovery_and_routing()
+	suite_checkpoints_and_progression()
 
 # ==============================================================================
 # ASSERTION HELPERS
@@ -487,3 +488,78 @@ func suite_multiplayer_discovery_and_routing() -> void:
 	NetworkManager.disconnect_game()
 	assert_true(not NetworkManager.is_host, "После disconnect_game() флаг is_host сброшен")
 	assert_true(not NetworkManager.is_multiplayer_active(), "После disconnect_game() сеть остановлена")
+
+# ==============================================================================
+# SUITE 9: CHECKPOINTS & 9-MAP PROGRESSION + HUB
+# ==============================================================================
+
+func suite_checkpoints_and_progression() -> void:
+	print("[SUITE 9] Контрольные точки, задачи и переход Хаб -> Следующая карта...")
+
+	var CheckpointTaskScript = preload("res://scripts/checkpoints/CheckpointTask.gd")
+	var CheckpointPointScript = preload("res://scripts/checkpoints/CheckpointPoint.gd")
+	var CheckpointManagerScript = preload("res://scripts/checkpoints/CheckpointManager.gd")
+
+	GameState.switch_location("kopachi")
+	GameState.karbovantsi = 200
+
+	var root := Node3D.new()
+	var slots := Node3D.new()
+	slots.name = "CheckpointSlots"
+	root.add_child(slots)
+
+	for i in range(4):
+		var marker := Marker3D.new()
+		marker.name = "Slot_%d" % i
+		marker.position = Vector3(i * 15.0, 0.0, 0.0)
+		slots.add_child(marker)
+
+	var manager := CheckpointManagerScript.new()
+	manager.auto_initialize_on_ready = false
+	manager.checkpoints_per_map = 2
+	manager.random_seed = 42
+	root.add_child(manager)
+	manager.slots_container_path = manager.get_path_to(slots)
+
+	add_child(root)
+	manager.setup_checkpoints(2, "kopachi")
+
+	assert_eq(manager.active_checkpoints.size(), 2, "Случайно выбрано 2 контрольные точки из 4 слотов")
+	var cp1 = manager.get_current_checkpoint()
+	assert_true(cp1 != null, "Текущая первая контрольная точка назначена")
+	assert_eq(cp1.state, CheckpointPointScript.State.AVAILABLE, "Первая контрольная точка открыта (AVAILABLE)")
+	assert_eq(manager.active_checkpoints[1].state, CheckpointPointScript.State.LOCKED, "Вторая контрольная точка заблокирована до прохождения первой")
+
+	# Назначаем предсказуемые задачи для проверки волн, уборки и головоломки
+	cp1.tasks = [
+		CheckpointTaskScript.create_default_task(CheckpointTaskScript.TaskType.WAVE_DEFENSE, 2, 1, "t1"),
+		CheckpointTaskScript.create_default_task(CheckpointTaskScript.TaskType.CLEANUP, 2, 1, "t2"),
+		CheckpointTaskScript.create_default_task(CheckpointTaskScript.TaskType.PUZZLE, 2, 1, "t3")
+	]
+	cp1.activate()
+	assert_eq(cp1.state, CheckpointPointScript.State.ACTIVE, "Точка 1 перешла в ACTIVE")
+
+	cp1.report_wave_cleared(cp1.tasks[0].target_amount)
+	cp1.report_cleanup_progress(cp1.tasks[1].target_amount)
+	cp1.solve_puzzle()
+
+	assert_eq(cp1.state, CheckpointPointScript.State.COMPLETED, "Точка 1 завершена после выполнения всех задач")
+	assert_eq(manager.active_checkpoints[1].state, CheckpointPointScript.State.AVAILABLE, "Точка 2 разблокирована после завершения Точки 1")
+
+	# Завершаем вторую точку
+	var cp2 = manager.get_current_checkpoint()
+	cp2.tasks = [CheckpointTaskScript.create_default_task(CheckpointTaskScript.TaskType.REPAIR, 2, 1, "t4")]
+	cp2.activate()
+	cp2.report_repair_progress(cp2.tasks[0].target_amount)
+
+	assert_eq(cp2.state, CheckpointPointScript.State.COMPLETED, "Точка 2 завершена")
+	assert_true(GameState.is_location_unlocked("microdistrict_1"), "Следующая карта (microdistrict_1) открыта")
+	assert_true(GameState.is_in_hub, "После завершения карты отряд переведен в Хаб")
+	assert_true(GameState.resupply_in_hub(25), "В хабе можно пополнить припасы за карбованцы")
+	assert_true(GameState.purchase_upgrade_in_hub("armor_vest", 50), "В хабе можно купить улучшение")
+
+	var next_map = GameState.proceed_from_hub_to_next_map()
+	assert_eq(next_map, "microdistrict_1", "Из хаба отряд переходит на открытую следующую карту")
+	assert_true(not GameState.is_in_hub, "После перехода на карту флаг is_in_hub сброшен")
+
+	root.queue_free()

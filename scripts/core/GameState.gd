@@ -403,9 +403,13 @@ const HUB_REGISTRY: Dictionary = {
 	}
 }
 
-# Текущее состояние игрока
+# Текущее состояние игрока и прогресс кампании (9 карт + Хаб)
 var current_class_id: String = "cleaner"
-var current_location_id: String = "microdistrict_1"
+var current_location_id: String = "kopachi"
+var pending_next_location_id: String = ""
+var is_in_hub: bool = false
+var unlocked_locations: Dictionary = {}
+var purchased_upgrades: Dictionary = {}
 
 # Характеристики выживания
 var health: float = 100.0
@@ -453,8 +457,15 @@ var cleaned_items: int = 0
 func _ready() -> void:
 	EventBus.trash_deposited.connect(_on_trash_deposited)
 	EventBus.dirt_cleaned.connect(_on_dirt_cleaned)
+	_init_unlocked_locations()
 	load_settings()
 	set_class("cleaner")
+
+func _init_unlocked_locations() -> void:
+	if not unlocked_locations.is_empty():
+		return
+	for loc_id in LOCATION_REGISTRY.keys():
+		unlocked_locations[loc_id] = bool(LOCATION_REGISTRY[loc_id].get("is_unlocked", false))
 
 func _process(delta: float) -> void:
 	# Восстановление выносливости
@@ -568,8 +579,74 @@ func get_all_hubs() -> Array:
 func switch_location(new_loc_id: String) -> void:
 	if LOCATION_REGISTRY.has(new_loc_id):
 		current_location_id = new_loc_id
+		is_in_hub = false
 		var loc_data = LOCATION_REGISTRY[new_loc_id]
 		EventBus.location_changed.emit(new_loc_id, loc_data)
+
+func is_location_unlocked(location_id: String) -> bool:
+	if unlocked_locations.has(location_id):
+		return bool(unlocked_locations[location_id])
+	return bool(LOCATION_REGISTRY.get(location_id, {}).get("is_unlocked", false))
+
+func get_next_location_id(from_location_id: String = "") -> String:
+	var base_id := from_location_id if not from_location_id.is_empty() else current_location_id
+	var current_data := get_location(base_id)
+	if current_data.is_empty():
+		return ""
+	var next_index := int(current_data.get("index", 0)) + 1
+	for loc_id in LOCATION_REGISTRY.keys():
+		if int(LOCATION_REGISTRY[loc_id].get("index", -1)) == next_index:
+			return loc_id
+	return ""
+
+## Вызывается при выполнении всех контрольных точек текущей карты.
+## Открывает следующую карту (из 9) и возвращает её ID.
+func unlock_next_location(completed_location_id: String = "") -> String:
+	var source_id := completed_location_id if not completed_location_id.is_empty() else current_location_id
+	var next_id := get_next_location_id(source_id)
+	if not next_id.is_empty():
+		unlocked_locations[next_id] = true
+		pending_next_location_id = next_id
+	EventBus.map_completed.emit(source_id, next_id)
+	return next_id
+
+## Переводит отряд в хаб перед отправкой на следующую карту.
+func enter_hub_before_next_map(next_loc_id: String = "") -> void:
+	if not next_loc_id.is_empty():
+		pending_next_location_id = next_loc_id
+	is_in_hub = true
+	EventBus.hub_transition_requested.emit(pending_next_location_id)
+
+## Отправка отряда из хаба на открытую следующую карту.
+func proceed_from_hub_to_next_map() -> String:
+	is_in_hub = false
+	if not pending_next_location_id.is_empty() and is_location_unlocked(pending_next_location_id):
+		var target_id := pending_next_location_id
+		pending_next_location_id = ""
+		switch_location(target_id)
+		return target_id
+	return ""
+
+## Пополнение припасов в хабе (восстановление HP, радиации и выносливости за карбованцы).
+func resupply_in_hub(cost: int = 25) -> bool:
+	if not is_in_hub or karbovantsi < cost:
+		return false
+	karbovantsi -= cost
+	health = max_health
+	radiation = 0.0
+	stamina = max_stamina
+	EventBus.health_changed.emit(health, max_health, 0.0)
+	EventBus.radiation_changed.emit(radiation, max_radiation, 0.0)
+	EventBus.stamina_changed.emit(stamina, max_stamina, 0.0)
+	return true
+
+## Покупка улучшения в хабе.
+func purchase_upgrade_in_hub(upgrade_id: String, cost: int) -> bool:
+	if not is_in_hub or upgrade_id.is_empty() or karbovantsi < cost:
+		return false
+	karbovantsi -= cost
+	purchased_upgrades[upgrade_id] = int(purchased_upgrades.get(upgrade_id, 0)) + 1
+	return true
 
 func defeat_enemy(enemy_id: String) -> void:
 	var enemy = get_enemy(enemy_id)

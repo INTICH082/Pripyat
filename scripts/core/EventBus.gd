@@ -23,9 +23,16 @@ signal character_class_changed(class_id: String, class_data: Dictionary)
 signal player_damaged(amount: float)
 signal control_settings_changed()
 
-# Локации и Противники
+# Локации, Контрольные точки и Противники
 signal location_changed(location_id: String, location_data: Dictionary)
 signal enemy_defeated(enemy_id: String, reward_karbovantsi: int)
+signal checkpoint_registered(checkpoint_id: String, index: int, total: int)
+signal checkpoint_unlocked(checkpoint_id: String, checkpoint_name: String)
+signal checkpoint_activated(checkpoint_id: String, tasks: Array)
+signal checkpoint_task_updated(checkpoint_id: String, task_id: String, progress: float, completed: bool)
+signal checkpoint_completed(checkpoint_id: String, reward_karbovantsi: int)
+signal map_completed(location_id: String, next_location_id: String)
+signal hub_transition_requested(next_location_id: String)
 
 # Инструменты и Оружие
 signal tool_changed(tool_mode: int, tool_name: String)
