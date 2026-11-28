@@ -202,6 +202,29 @@ layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
 text = "🔄 ОБНОВИТЬ СПИСОК"
 
+[node name="MasterBar" type="HBoxContainer" parent="MarginContainer/ConnectionView/VBox/TabContainer/BrowserTab/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="MasterLabel" type="Label" parent="MarginContainer/ConnectionView/VBox/TabContainer/BrowserTab/VBox/MasterBar"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.65, 0.75, 0.7, 1)
+theme_override_font_sizes/font_size = 12
+text = "Мастер-сервер (интернет):"
+
+[node name="MasterUrlInput" type="LineEdit" parent="MarginContainer/ConnectionView/VBox/TabContainer/BrowserTab/VBox/MasterBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
+placeholder_text = "http://ip:8080 (для поиска вне локальной сети / VPN)"
+
+[node name="MasterApplyButton" type="Button" parent="MarginContainer/ConnectionView/VBox/TabContainer/BrowserTab/VBox/MasterBar"]
+custom_minimum_size = Vector2(120, 28)
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+text = "ПРИМЕНИТЬ"
+
 [node name="Scroll" type="ScrollContainer" parent="MarginContainer/ConnectionView/VBox/TabContainer/BrowserTab/VBox"]
 layout_mode = 2
 size_flags_vertical = 3
@@ -701,8 +724,10 @@ text = "🚀 НАЧАТЬ ЗАЧИСТКУ (СТАРТ)"
 
 [connection signal="pressed" from="MarginContainer/ConnectionView/VBox/TopRow/SoloButton" to="." method="_on_solo_play_pressed"]
 [connection signal="pressed" from="MarginContainer/ConnectionView/VBox/TabContainer/BrowserTab/VBox/TopBar/RefreshButton" to="." method="_on_refresh_lobbies_pressed"]
+[connection signal="pressed" from="MarginContainer/ConnectionView/VBox/TabContainer/BrowserTab/VBox/MasterBar/MasterApplyButton" to="." method="_on_master_apply_pressed"]
+[connection signal="text_submitted" from="MarginContainer/ConnectionView/VBox/TabContainer/BrowserTab/VBox/MasterBar/MasterUrlInput" to="." method="_on_master_url_submitted"]
 [connection signal="pressed" from="MarginContainer/ConnectionView/VBox/TabContainer/DirectTab/VBox/ConnectButton" to="." method="_on_direct_connect_pressed"]
-[connection signal="text_submitted" from="MarginContainer/ConnectionView/VBox/TabContainer/DirectTab/VBox/CodeHBox/CodeInput" to="." method="_on_direct_connect_pressed"]
+[connection signal="text_submitted" from="MarginContainer/ConnectionView/VBox/TabContainer/DirectTab/VBox/CodeHBox/CodeInput" to="." method="_on_direct_code_submitted"]
 [connection signal="pressed" from="MarginContainer/ConnectionView/VBox/TabContainer/HostTab/VBox/HostButton" to="." method="_on_host_lobby_pressed"]
 [connection signal="pressed" from="MarginContainer/LobbyRoomView/VBox/NetworkDetails/CopyInviteButton" to="." method="_on_copy_invite_pressed"]
 [connection signal="pressed" from="MarginContainer/LobbyRoomView/VBox/ClassSelectBox/ButtonsHBox/BtnCleaner" to="." method="_on_class_cleaner_pressed"]

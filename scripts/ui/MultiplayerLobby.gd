@@ -4,10 +4,12 @@ extends Control
 ## Экран лобби и сетевого браузера ликвидаторов (до 4 игроков).
 ## Обеспечивает:
 ## 1. Полноценную игру через интернет по Коду комнаты (Room Code) и внешнему IP.
-## 2. Автоматический проброс портов UPnP для прямого соединения без настройки роутера.
-## 3. Автопоиск комнат в локальной сети / Radmin VPN / Hamachi.
-## 4. Браузер открытых серверов (Master Server).
-## 5. Копирование кода приглашения для друзей в один клик.
+## 2. Автоматический проброс портов UPnP для прямого соединения с детекцией CGNAT.
+## 3. Мульти-интерфейсный автопоиск комнат (LAN / Radmin VPN / Hamachi / EasyVPN / Tailscale).
+## 4. Браузер открытых серверов (Master Server) с настройкой URL из интерфейса.
+## 5. Копирование полного приглашения (Интернет-код + VPN-код + все IP) в один клик.
+
+const CONNECT_TIMEOUT_SEC: float = 10.0
 
 @onready var connection_view: Control = $MarginContainer/ConnectionView
 @onready var lobby_room_view: Control = $MarginContainer/LobbyRoomView
@@ -15,12 +17,14 @@ extends Control
 # Поля экрана подключения
 @onready var name_input: LineEdit = $MarginContainer/ConnectionView/VBox/TopRow/NameBox/NameInput
 @onready var direct_code_input: LineEdit = $MarginContainer/ConnectionView/VBox/TabContainer/DirectTab/VBox/CodeHBox/CodeInput
+@onready var connect_button: Button = $MarginContainer/ConnectionView/VBox/TabContainer/DirectTab/VBox/ConnectButton
 @onready var host_title_input: LineEdit = $MarginContainer/ConnectionView/VBox/TabContainer/HostTab/VBox/TitleHBox/TitleInput
 @onready var host_port_input: LineEdit = $MarginContainer/ConnectionView/VBox/TabContainer/HostTab/VBox/PortHBox/PortInput
 @onready var upnp_checkbox: CheckBox = $MarginContainer/ConnectionView/VBox/TabContainer/HostTab/VBox/UPnPCheck
 @onready var status_label: Label = $MarginContainer/ConnectionView/VBox/StatusLabel
 
-# Браузер серверов
+# Браузер серверов и мастер-сервер
+@onready var master_url_input: LineEdit = $MarginContainer/ConnectionView/VBox/TabContainer/BrowserTab/VBox/MasterBar/MasterUrlInput
 @onready var scroll_container: ScrollContainer = $MarginContainer/ConnectionView/VBox/TabContainer/BrowserTab/VBox/Scroll
 @onready var lobbies_list_container: VBoxContainer = $MarginContainer/ConnectionView/VBox/TabContainer/BrowserTab/VBox/Scroll/LobbiesList
 @onready var no_lobbies_label: Label = $MarginContainer/ConnectionView/VBox/TabContainer/BrowserTab/VBox/NoLobbiesLabel
@@ -43,6 +47,12 @@ extends Control
 var slot_cards: Array[PanelContainer] = []
 var selected_class: String = "cleaner"
 
+# Состояние подключения и автопоиска
+var is_connecting: bool = false
+var connect_timeout_timer: float = 0.0
+var auto_probe_timer: float = 0.0
+var auto_master_timer: float = 0.0
+
 func _ready() -> void:
 	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 	_init_slot_card_references()
@@ -57,11 +67,43 @@ func _ready() -> void:
 		
 		name_input.text = NetworkManager.local_player_name
 		selected_class = NetworkManager.local_class_id
+		if master_url_input:
+			master_url_input.text = NetworkManager.master_server_url
 	else:
 		name_input.text = "Ликвидатор-86"
 		
 	_show_connection_view()
 	_refresh_lobbies_list()
+
+func _process(delta: float) -> void:
+	# Таймаут подключения клиента
+	if is_connecting:
+		connect_timeout_timer -= delta
+		if connect_timeout_timer <= 0.0:
+			is_connecting = false
+			if connect_button:
+				connect_button.text = "➔ ПОДКЛЮЧИТЬСЯ К ОТРЯДУ"
+			var fail_port = NetworkManager.DEFAULT_PORT
+			if NetworkManager:
+				NetworkManager.disconnect_game()
+			_on_connection_status_changed(
+				"Время ожидания вышло (10 сек). Хост не отвечает — проверьте Radmin/Hamachi VPN, брандмауэр или порт %d UDP." % fail_port,
+				true
+			)
+		return
+		
+	# Автоматический активный поиск серверов, пока открыто окно поиска
+	if connection_view.visible and NetworkManager:
+		auto_probe_timer += delta
+		if auto_probe_timer >= 2.5:
+			auto_probe_timer = 0.0
+			NetworkManager.send_discovery_probe()
+			
+		if NetworkManager.master_server_url != "":
+			auto_master_timer += delta
+			if auto_master_timer >= 8.0:
+				auto_master_timer = 0.0
+				NetworkManager.refresh_master_server_lobbies()
 
 func _init_slot_card_references() -> void:
 	slot_cards.clear()
@@ -80,12 +122,19 @@ func _show_lobby_room_view() -> void:
 	_update_lobby_room_ui()
 	_update_network_details_header()
 
+func _reset_connecting_ui() -> void:
+	is_connecting = false
+	connect_timeout_timer = 0.0
+	if connect_button:
+		connect_button.text = "➔ ПОДКЛЮЧИТЬСЯ К ОТРЯДУ"
+
 # ==============================================================================
 # ОБРАБОТЧИКИ ЭКРАНА ПОДКЛЮЧЕНИЯ
 # ==============================================================================
 
 ## Одиночный запуск игры без сети
 func _on_solo_play_pressed() -> void:
+	_reset_connecting_ui()
 	var p_name = name_input.text.strip_edges()
 	if p_name == "": p_name = "Ликвидатор"
 	if NetworkManager:
@@ -98,6 +147,7 @@ func _on_solo_play_pressed() -> void:
 
 ## Создание лобби (Хост)
 func _on_host_lobby_pressed() -> void:
+	_reset_connecting_ui()
 	var p_name = name_input.text.strip_edges()
 	var title = host_title_input.text.strip_edges()
 	if title == "": title = "Смена Сосновки"
@@ -109,20 +159,53 @@ func _on_host_lobby_pressed() -> void:
 		var err = NetworkManager.host_game(port, p_name, selected_class, title, use_upnp)
 		if err == OK:
 			_show_lobby_room_view()
-			_add_chat_entry("ШТАБ", "Лобби отряда создано! Код комнаты: %s" % NetworkManager.room_code)
+			chat_log.clear()
+			_add_chat_entry("ШТАБ", "Лобби создано! Код комнаты: %s | VPN-код: %s" % [NetworkManager.room_code, NetworkManager.local_room_code])
+
+## Нажатие Enter в поле кода прямого подключения
+func _on_direct_code_submitted(_new_text: String) -> void:
+	_on_direct_connect_pressed()
 
 ## Прямое подключение по Коду комнаты или IP:PORT
 func _on_direct_connect_pressed() -> void:
+	if is_connecting:
+		_reset_connecting_ui()
+		if NetworkManager:
+			NetworkManager.disconnect_game()
+		_on_connection_status_changed("Подключение отменено пользователем.", false)
+		return
+		
 	var target = direct_code_input.text.strip_edges()
 	if target == "":
-		_on_connection_status_changed("Введите код комнаты (ZONE-...) или IP:порт сервера!", true)
+		_on_connection_status_changed("Введите код комнаты (ZONE-...) или IP:порт сервера друга!", true)
 		return
 		
 	var p_name = name_input.text.strip_edges()
-	if NetworkManager:
-		var err = NetworkManager.join_game(target, NetworkManager.DEFAULT_PORT, p_name, selected_class)
-		if err == OK:
-			_show_lobby_room_view()
+	_begin_client_connect(target, NetworkManager.DEFAULT_PORT, p_name)
+
+func _begin_client_connect(target: String, port: int, p_name: String) -> void:
+	if not NetworkManager:
+		return
+	var err = NetworkManager.join_game(target, port, p_name, selected_class)
+	if err == OK:
+		is_connecting = true
+		connect_timeout_timer = CONNECT_TIMEOUT_SEC
+		if connect_button:
+			connect_button.text = "✖ ОТМЕНИТЬ ПОДКЛЮЧЕНИЕ"
+
+## Применение адреса мастер-сервера
+func _on_master_apply_pressed() -> void:
+	if not NetworkManager or not master_url_input:
+		return
+	NetworkManager.set_master_server_url(master_url_input.text)
+	if NetworkManager.master_server_url == "":
+		_on_connection_status_changed("Адрес мастер-сервера очищен (работает поиск LAN / VPN).", false)
+	else:
+		_on_connection_status_changed("Мастер-сервер сохранен: %s. Обновляем список..." % NetworkManager.master_server_url, false)
+	_refresh_lobbies_list()
+
+func _on_master_url_submitted(_new_text: String) -> void:
+	_on_master_apply_pressed()
 
 ## Обновление списка доступных серверов
 func _on_refresh_lobbies_pressed() -> void:
@@ -130,6 +213,7 @@ func _on_refresh_lobbies_pressed() -> void:
 
 func _refresh_lobbies_list() -> void:
 	if NetworkManager:
+		NetworkManager.send_discovery_probe()
 		NetworkManager.refresh_master_server_lobbies()
 		_on_lobbies_discovered_updated(NetworkManager.get_all_discovered_lobbies())
 
@@ -187,7 +271,8 @@ func _create_lobby_row(lobby: Dictionary) -> PanelContainer:
 	var l_sub = Label.new()
 	var host = lobby.get("host", "Неизвестно")
 	var l_type = lobby.get("type", "LAN")
-	l_sub.text = "Командир: %s  |  Сеть: [%s]" % [host, l_type]
+	var l_code = lobby.get("code", "")
+	l_sub.text = "Командир: %s  |  Сеть: [%s]%s" % [host, l_type, ("  |  " + l_code) if l_code != "" else ""]
 	l_sub.add_theme_font_size_override("font_size", 12)
 	l_sub.modulate = Color(0.7, 0.75, 0.7)
 	info_vbox.add_child(l_sub)
@@ -211,21 +296,24 @@ func _create_lobby_row(lobby: Dictionary) -> PanelContainer:
 	btn_style.set_corner_radius_all(4)
 	join_btn.add_theme_stylebox_override("normal", btn_style)
 	
-	var ip = lobby.get("ip", "127.0.0.1")
-	var port = lobby.get("port", NetworkManager.DEFAULT_PORT)
+	var target_ip = NetworkManager.resolve_best_ip_for_lobby(lobby) if NetworkManager else str(lobby.get("ip", "127.0.0.1"))
+	var port = int(lobby.get("port", NetworkManager.DEFAULT_PORT))
 	join_btn.pressed.connect(func():
 		var p_name = name_input.text.strip_edges()
-		if NetworkManager:
-			NetworkManager.join_game(ip, port, p_name, selected_class)
-			_show_lobby_room_view()
+		_begin_client_connect(target_ip, port, p_name)
 	)
 	hbox.add_child(join_btn)
 	
 	return panel
 
 func _on_connection_status_changed(text: String, is_error: bool) -> void:
-	status_label.text = text
-	status_label.modulate = Color(1.0, 0.35, 0.35) if is_error else Color(0.4, 0.95, 0.6)
+	if status_label:
+		status_label.text = text
+		status_label.modulate = Color(1.0, 0.35, 0.35) if is_error else Color(0.4, 0.95, 0.6)
+	if is_error:
+		_reset_connecting_ui()
+		if lobby_room_view.visible:
+			_show_connection_view()
 
 func _on_upnp_status_changed(text: String, is_act: bool) -> void:
 	if upnp_badge_label:
@@ -240,8 +328,10 @@ func _on_external_ip_detected(_ip: String, _code: String) -> void:
 # ==============================================================================
 
 func _on_lobby_updated(players: Dictionary) -> void:
-	if not lobby_room_view.visible and players.size() > 0:
-		_show_lobby_room_view()
+	if players.size() > 0:
+		_reset_connecting_ui()
+		if not lobby_room_view.visible:
+			_show_lobby_room_view()
 	_update_lobby_room_ui()
 	_update_network_details_header()
 
@@ -249,24 +339,36 @@ func _update_network_details_header() -> void:
 	if not NetworkManager:
 		return
 	if room_code_label:
-		room_code_label.text = NetworkManager.room_code if NetworkManager.room_code != "" else "Определение..."
+		if NetworkManager.room_code != "" and NetworkManager.local_room_code != "" and NetworkManager.room_code != NetworkManager.local_room_code:
+			room_code_label.text = "%s (VPN: %s)" % [NetworkManager.room_code, NetworkManager.local_room_code]
+		else:
+			room_code_label.text = NetworkManager.room_code if NetworkManager.room_code != "" else "Определение..."
 	if ext_ip_label:
 		ext_ip_label.text = "%s:%d" % [NetworkManager.external_ip if NetworkManager.external_ip != "" else "Не определен", NetworkManager.current_port]
 	if local_ip_label:
-		local_ip_label.text = "%s:%d" % [NetworkManager.local_ip, NetworkManager.current_port]
+		var ips_list = NetworkManager.local_ips if NetworkManager.local_ips.size() > 0 else [NetworkManager.local_ip]
+		var formatted_ips: Array[String] = []
+		for ip_addr in ips_list:
+			formatted_ips.append("%s:%d" % [ip_addr, NetworkManager.current_port])
+		local_ip_label.text = " | ".join(formatted_ips)
 	if upnp_badge_label:
 		upnp_badge_label.text = NetworkManager.upnp_status_text
 		upnp_badge_label.modulate = Color(0.3, 1.0, 0.4) if NetworkManager.upnp_active else Color(1.0, 0.8, 0.3)
 
-## Копирование кода приглашения для друзей в буфер обмена
+## Копирование полного приглашения для друзей в буфер обмена
 func _on_copy_invite_pressed() -> void:
 	if not NetworkManager:
 		return
 	var code = NetworkManager.room_code
-	var ext_ip = "%s:%d" % [NetworkManager.external_ip, NetworkManager.current_port]
-	var loc_ip = "%s:%d" % [NetworkManager.local_ip, NetworkManager.current_port]
+	var vpn_code = NetworkManager.local_room_code
+	var ext_ip = "%s:%d" % [NetworkManager.external_ip, NetworkManager.current_port] if NetworkManager.external_ip != "" else "Не определен"
+	var ips_list = NetworkManager.local_ips if NetworkManager.local_ips.size() > 0 else [NetworkManager.local_ip]
+	var loc_ips_str = ""
+	for i in range(ips_list.size()):
+		if i > 0: loc_ips_str += " / "
+		loc_ips_str += "%s:%d" % [ips_list[i], NetworkManager.current_port]
 	
-	var invite_text = "Вступай в отряд ликвидации PRIPYAT!\nКод комнаты: %s\nВнешний IP: %s\nЛокальный IP (LAN/Radmin/Hamachi): %s" % [code, ext_ip, loc_ip]
+	var invite_text = "Вступай в отряд ликвидации PRIPYAT!\nКод комнаты (Интернет): %s\nКод комнаты (VPN / LAN): %s\nВнешний IP: %s\nЛокальные / VPN IP: %s" % [code, vpn_code, ext_ip, loc_ips_str]
 	DisplayServer.clipboard_set(invite_text)
 	
 	if copy_invite_button:
@@ -399,6 +501,7 @@ func _on_start_game_pressed() -> void:
 		NetworkManager.host_start_game("res://scenes/world/SosnovkaVillage.tscn")
 
 func _on_leave_lobby_pressed() -> void:
+	_reset_connecting_ui()
 	if NetworkManager:
 		NetworkManager.disconnect_game()
 	_show_connection_view()

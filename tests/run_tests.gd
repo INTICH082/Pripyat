@@ -42,6 +42,7 @@ func _run_all_test_suites() -> void:
 	suite_weapon_arsenal_and_ammo_math()
 	suite_interactables_logic()
 	suite_scene_hierarchy_integrity()
+	suite_multiplayer_discovery_and_routing()
 
 # ==============================================================================
 # ASSERTION HELPERS
@@ -413,3 +414,76 @@ func suite_scene_hierarchy_integrity() -> void:
 		if cselect:
 			assert_eq(cselect.visible, false, "CharacterSelectScreen по умолчанию СКРЫТ (visible = false) при запуске интерфейса")
 		hud_inst.queue_free()
+
+# ==============================================================================
+# SUITE 8: MULTIPLAYER DISCOVERY, VPN PRIORITY, SUBNET ROUTING & HOSTING
+# ==============================================================================
+
+func suite_multiplayer_discovery_and_routing() -> void:
+	print("\n[SUITE 8] Мультиплеер: Приоритеты VPN/LAN, CGNAT, маршрутизация и хостинг...")
+	
+	# 1. Валидация и классификация публичных vs серых/VPN IP
+	assert_true(NetworkManager.is_public_ipv4("85.202.160.10"), "Публичный IP 85.202.160.10 распознан как белый")
+	assert_true(not NetworkManager.is_public_ipv4("100.64.12.5"), "CGNAT IP 100.64.12.5 распознан как непубличный")
+	assert_true(not NetworkManager.is_public_ipv4("192.168.1.10"), "LAN IP 192.168.1.10 распознан как непубличный")
+	assert_true(not NetworkManager.is_public_ipv4("172.19.0.1"), "VPN IP 172.19.0.1 распознан как непубличный")
+	assert_true(not NetworkManager.is_public_ipv4("26.15.80.12"), "Radmin VPN 26.15.80.12 распознан как непубличный")
+	assert_true(not NetworkManager.is_public_ipv4("127.0.0.1"), "Loopback 127.0.0.1 не является публичным")
+	
+	# 2. Строгий приоритет интерфейсов (Radmin/Hamachi -> EasyVPN/Tailscale -> Wi-Fi LAN -> 10.x)
+	assert_true(NetworkManager._get_ip_priority("26.10.20.30") < NetworkManager._get_ip_priority("172.19.0.1"), "Radmin VPN приоритетнее 172.19.x")
+	assert_true(NetworkManager._get_ip_priority("172.19.0.1") < NetworkManager._get_ip_priority("192.168.10.100"), "VPN 172.19.0.1 приоритетнее локального Wi-Fi 192.168.x")
+	assert_true(NetworkManager._get_ip_priority("192.168.10.100") < NetworkManager._get_ip_priority("10.0.0.5"), "Wi-Fi 192.168.x приоритетнее 10.x")
+	
+	# Проверка на реальных интерфейсах машины
+	var local_list = NetworkManager.get_all_local_ipv4()
+	assert_true(local_list.size() > 0, "Обнаружены локальные/VPN IPv4-интерфейсы (%d шт.)" % local_list.size())
+	var best_ip = NetworkManager.detect_local_ip()
+	assert_eq(best_ip, local_list[0], "detect_local_ip() возвращает интерфейс с наивысшим приоритетом (%s)" % best_ip)
+	
+	# 3. Целевые широковещательные адреса (Directed Broadcast)
+	var bcast = NetworkManager._get_broadcast_targets()
+	assert_true("255.255.255.255" in bcast, "Список широковещательных адресов содержит 255.255.255.255")
+	assert_true("127.0.0.1" in bcast, "Список рассылки содержит 127.0.0.1 для локальных тестов")
+	assert_true(bcast.size() >= 3, "Генерируются направленные адреса подсетей (%d адресов)" % bcast.size())
+	
+	# 4. Матчинг подсетей и обход Hairpin NAT
+	assert_true(NetworkManager._are_in_same_subnet("26.1.2.3", "26.99.88.77"), "Узлы Radmin VPN 26.x находятся в одной виртуальной сети /8")
+	assert_true(NetworkManager._are_in_same_subnet("192.168.10.5", "192.168.10.100"), "Узлы LAN 192.168.10.x находятся в одной подсети /24")
+	assert_true(not NetworkManager._are_in_same_subnet("192.168.10.5", "192.168.20.5"), "Разные подсети LAN корректно различаются")
+	
+	var fake_internet_lobby = {
+		"ip": "95.24.120.5",
+		"ips": [best_ip],
+		"port": 7777
+	}
+	var chosen_ip = NetworkManager.resolve_best_ip_for_lobby(fake_internet_lobby)
+	if best_ip != "127.0.0.1":
+		assert_eq(chosen_ip, best_ip, "При совпадении локальной/VPN подсети выбирается прямой адрес (%s) вместо внешнего IP" % best_ip)
+	
+	# 5. Разделение LAN и Internet списков и дедупликация
+	NetworkManager.lan_discovered_lobbies.clear()
+	NetworkManager.internet_discovered_lobbies.clear()
+	var now = Time.get_ticks_msec()
+	NetworkManager.lan_discovered_lobbies["uid_shared"] = { "lobby_uid": "uid_shared", "name": "LAN Copy", "ip": "192.168.10.50", "last_seen": now }
+	NetworkManager.internet_discovered_lobbies["uid_shared"] = { "lobby_uid": "uid_shared", "name": "Inet Copy", "ip": "95.24.120.5", "last_seen": now }
+	NetworkManager.internet_discovered_lobbies["uid_inet_only"] = { "lobby_uid": "uid_inet_only", "name": "Inet Only", "ip": "85.10.20.30", "last_seen": now }
+	
+	NetworkManager._poll_lan_listener()
+	var merged = NetworkManager.get_all_discovered_lobbies()
+	assert_eq(merged.size(), 2, "Объединенный список дедуплицирован (1 LAN/Inet дубликат + 1 чистый Inet = 2 лобби)")
+	assert_eq(NetworkManager.internet_discovered_lobbies.size(), 2, "Интернет-лобби не удаляются циклом опроса LAN")
+	NetworkManager.lan_discovered_lobbies.clear()
+	NetworkManager.internet_discovered_lobbies.clear()
+	
+	# 6. Тест запуска хоста на тестовом порту (без UPnP) и корректного завершения
+	var err = NetworkManager.host_game(7795, "TestCommander", "soldier", "Тест Смена", false)
+	assert_eq(err, OK, "Запуск сервера хоста на порту 7795 завершен с кодом OK")
+	assert_true(NetworkManager.is_host, "Флаг is_host установлен в true")
+	assert_true(NetworkManager.is_multiplayer_active(), "Мультиплеер активен")
+	assert_true(NetworkManager.lan_broadcasters.size() >= 1, "Созданы сокеты рассылки для всех интерфейсов (%d шт.)" % NetworkManager.lan_broadcasters.size())
+	assert_true(NetworkManager.local_room_code.begins_with("ZONE-"), "Сгенерирован корректный локальный/VPN код комнаты: %s" % NetworkManager.local_room_code)
+	
+	NetworkManager.disconnect_game()
+	assert_true(not NetworkManager.is_host, "После disconnect_game() флаг is_host сброшен")
+	assert_true(not NetworkManager.is_multiplayer_active(), "После disconnect_game() сеть остановлена")

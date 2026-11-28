@@ -16,6 +16,7 @@ import sys
 import threading
 import time
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
+from urllib.parse import parse_qs, unquote
 
 PORT = int(os.environ.get("PORT", sys.argv[1] if len(sys.argv) > 1 else 8080))
 LOBBY_TIMEOUT_SECONDS = 30
@@ -45,11 +46,20 @@ class MasterServerHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         clean_expired_lobbies()
-        clean_path = self.path.split("?")[0].rstrip("/")
+        path_part, _, query_part = self.path.partition("?")
+        clean_path = path_part.rstrip("/")
+        query_params = parse_qs(query_part)
         
         if clean_path == "/api/lobbies":
+            code_filter = query_params.get("code", [""])[0].strip().upper()
             with lobbies_lock:
                 lobby_list = [item["data"] for item in active_lobbies.values()]
+                if code_filter:
+                    lobby_list = [
+                        l for l in lobby_list
+                        if str(l.get("code", "")).upper() == code_filter
+                        or str(l.get("local_code", "")).upper() == code_filter
+                    ]
             response_data = json.dumps(lobby_list, ensure_ascii=False).encode("utf-8")
             self.send_response(200)
             self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -67,8 +77,11 @@ class MasterServerHandler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         clean_expired_lobbies()
-        content_length = int(self.headers.get("Content-Length", 0))
-        if content_length > 65536: # Защита от гигантских пейлоадов (64 KB max)
+        try:
+            content_length = int(self.headers.get("Content-Length", 0))
+        except (ValueError, TypeError):
+            content_length = 0
+        if content_length > 65536 or content_length < 0: # Защита от гигантских пейлоадов (64 KB max)
             self.send_response(413)
             self.end_headers()
             return
@@ -91,10 +104,12 @@ class MasterServerHandler(BaseHTTPRequestHandler):
                     return
 
             lobby_id = str(data.get("id", f"lobby_{int(time.time()*1000)}"))[:64]
+            lobby_uid = str(data.get("lobby_uid", lobby_id))[:64]
             # Валидация и санитизация
             safe_name = str(data.get("name", "Смена ликвидаторов"))[:64]
             safe_host = str(data.get("host", "Ликвидатор"))[:32]
             safe_code = str(data.get("code", ""))[:32]
+            safe_local_code = str(data.get("local_code", ""))[:32]
             try:
                 safe_port = int(data.get("port", 7777))
                 if not (1 <= safe_port <= 65535):
@@ -107,14 +122,20 @@ class MasterServerHandler(BaseHTTPRequestHandler):
             if not provided_ip or provided_ip in ["127.0.0.1", "localhost", "0.0.0.0"]:
                 provided_ip = client_ip
 
+            raw_ips = data.get("ips", [])
+            safe_ips = [str(ip)[:45] for ip in raw_ips[:8]] if isinstance(raw_ips, list) else []
+
             token = secrets.token_hex(16)
             sanitized_data = {
                 "id": lobby_id,
+                "lobby_uid": lobby_uid,
                 "name": safe_name,
                 "host": safe_host,
                 "ip": provided_ip,
+                "ips": safe_ips,
                 "port": safe_port,
                 "code": safe_code,
+                "local_code": safe_local_code,
                 "players": int(data.get("players", 1)),
                 "max_players": int(data.get("max_players", 4))
             }
@@ -138,7 +159,7 @@ class MasterServerHandler(BaseHTTPRequestHandler):
         elif clean_path.startswith("/api/lobbies/") and clean_path.endswith("/heartbeat"):
             parts = clean_path.split("/")
             if len(parts) >= 5:
-                lobby_id = parts[3]
+                lobby_id = unquote(parts[3])
                 with lobbies_lock:
                     if lobby_id in active_lobbies:
                         lobby = active_lobbies[lobby_id]
@@ -152,6 +173,12 @@ class MasterServerHandler(BaseHTTPRequestHandler):
                                     lobby["data"]["players"] = int(data["players"])
                                 except (ValueError, TypeError):
                                     pass
+                            if "code" in data and str(data["code"]).strip():
+                                lobby["data"]["code"] = str(data["code"])[:32]
+                            if "ip" in data and str(data["ip"]).strip() not in ["", "127.0.0.1", "localhost", "0.0.0.0"]:
+                                lobby["data"]["ip"] = str(data["ip"]).strip()[:45]
+                            if "ips" in data and isinstance(data["ips"], list):
+                                lobby["data"]["ips"] = [str(ip)[:45] for ip in data["ips"][:8]]
                             self.send_response(200)
                             self._send_cors_headers()
                             self.end_headers()
@@ -172,7 +199,7 @@ class MasterServerHandler(BaseHTTPRequestHandler):
         if clean_path.startswith("/api/lobbies/"):
             parts = clean_path.split("/")
             if len(parts) >= 4:
-                lobby_id = parts[3]
+                lobby_id = unquote(parts[3])
                 with lobbies_lock:
                     if lobby_id in active_lobbies:
                         lobby = active_lobbies[lobby_id]
